@@ -36,6 +36,7 @@ export default function FlashcardsPage() {
     const toStudy = dueCards.length >= 5
       ? dueCards.slice(0, 20)
       : [...dueCards, ...pool.filter((v) => !dueIds.includes(v.id)).slice(0, 20 - dueCards.length)];
+    setSelectedCategory(category);
     setDeck(toStudy.sort(() => Math.random() - 0.5));
     setCardIndex(0);
     setFlipped(false);
@@ -171,7 +172,7 @@ export default function FlashcardsPage() {
               ))}
             </div>
             <div className="bg-sky-50 rounded-xl p-3 mb-6">
-              <p className="text-sky-700 font-semibold text-sm">{Math.round((known / total) * 100)}% known</p>
+              <p className="text-sky-700 font-semibold text-sm">{total > 0 ? Math.round((known / total) * 100) : 0}% known</p>
             </div>
             <div className="flex gap-3">
               <button onClick={() => startSession(selectedCategory)}

@@ -46,7 +46,7 @@ export function saveUser(user: User): void {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(user));
   // Also update aggregate users list for admin data collection
   const allRaw = localStorage.getItem(ALL_USERS_KEY);
-  const allUsers: Record<string, Omit<User, 'id'>> = allRaw ? JSON.parse(allRaw) : {};
+  const allUsers: Record<string, User> = allRaw ? JSON.parse(allRaw) : {};
   allUsers[user.id] = user;
   localStorage.setItem(ALL_USERS_KEY, JSON.stringify(allUsers));
 }

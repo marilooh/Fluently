@@ -115,7 +115,6 @@ export default function LessonPage() {
 
   const completeLesson = () => {
     if (!lesson || !user) return;
-    const timeSpent = Math.round((Date.now() - startTime) / 1000);
     const accuracy = questions.length > 0 ? Math.round((score / questions.length) * 100) : 0;
     const xpEarned = Math.round(lesson.xpReward * (accuracy / 100));
     const coinsEarned = Math.round(lesson.coinReward * (accuracy / 100));

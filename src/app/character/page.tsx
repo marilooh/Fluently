@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Navbar from '@/components/Navbar';
-import { getCurrentUser, updateUser, spendCoins, unlockItem, equipItem, User } from '@/lib/auth';
+import { getCurrentUser, spendCoins, unlockItem, equipItem, User } from '@/lib/auth';
 import { shopItems, ShopItem, ItemSlot, RARITY_COLORS, RARITY_BADGE, getItemsBySlot } from '@/data/shopItems';
 
 const SLOTS: { slot: ItemSlot; label: string; emoji: string }[] = [
