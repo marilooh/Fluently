@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { logout, getCurrentUser } from '@/lib/auth';
+import { useAuth } from '@/contexts/AuthContext';
 
 const NAV_ITEMS = [
   { href: '/dashboard', label: 'Home', icon: '🏠' },
@@ -17,11 +17,12 @@ const NAV_ITEMS = [
 export default function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
-  const user = getCurrentUser();
+  const { profile, signOut } = useAuth();
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await signOut();
     router.push('/');
+    router.refresh();
   };
 
   return (
@@ -45,23 +46,24 @@ export default function Navbar() {
         </nav>
 
         <div className="flex items-center gap-3">
-          {user && (
+          {profile && (
             <>
               <div className="flex items-center gap-2 bg-amber-50 px-3 py-1.5 rounded-xl">
                 <span>🔥</span>
-                <span className="text-amber-600 font-bold text-sm">{user.streak}</span>
+                <span className="text-amber-600 font-bold text-sm">{profile.streak}</span>
               </div>
               <div className="flex items-center gap-2 bg-sky-50 px-3 py-1.5 rounded-xl">
                 <span>⚡</span>
-                <span className="text-sky-600 font-bold text-sm">{user.xp} XP</span>
+                <span className="text-sky-600 font-bold text-sm">{profile.xp} XP</span>
               </div>
               <div className="flex items-center gap-2 bg-yellow-50 px-3 py-1.5 rounded-xl">
                 <span>🪙</span>
-                <span className="text-yellow-600 font-bold text-sm">{user.coins}</span>
+                <span className="text-yellow-600 font-bold text-sm">{profile.coins}</span>
               </div>
             </>
           )}
-          <button onClick={handleLogout} className="text-gray-400 hover:text-gray-600 text-sm px-2 py-1 rounded-lg hover:bg-gray-100 transition-colors">
+          <button onClick={handleLogout}
+            className="text-gray-400 hover:text-gray-600 text-sm px-2 py-1 rounded-lg hover:bg-gray-100 transition-colors">
             Sign out
           </button>
         </div>

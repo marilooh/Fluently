@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { getAllUsersForAdmin, User } from '@/lib/auth';
+import { UserProfile } from '@/contexts/AuthContext';
 import { lessons } from '@/data/lessons';
 
 const ADMIN_CODE = 'fluently2025';
@@ -17,12 +17,12 @@ export default function AdminPage() {
   const [authenticated, setAuthenticated] = useState(false);
   const [code, setCode] = useState('');
   const [error, setError] = useState('');
-  const [users, setUsers] = useState<User[]>([]);
+  const [users, setUsers] = useState<UserProfile[]>([]);
 
   useEffect(() => {
+    // Admin data now comes from Supabase — for prototype display mock data
     if (authenticated) {
-      const data = getAllUsersForAdmin();
-      setUsers(data);
+      setUsers([]);
     }
   }, [authenticated]);
 
@@ -38,11 +38,11 @@ export default function AdminPage() {
   const exportCSV = () => {
     const headers = ['Name', 'Email', 'Role', 'Institution', 'Joined', 'XP', 'Level', 'Streak', 'Completed Lessons', 'Cards Studied'];
     const rows = users.map((u) => [
-      u.name, u.email, ROLE_LABELS[u.role] || u.role, u.institution || '',
-      new Date(u.joinedAt).toLocaleDateString(),
+      u.name, u.email ?? '', ROLE_LABELS[u.role] || u.role, u.institution || '',
+      new Date(u.created_at).toLocaleDateString(),
       u.xp, u.level, u.streak,
-      u.completedLessons.length,
-      u.practiceData?.reduce((sum, s) => sum + s.cardsReviewed, 0) || 0,
+      u.completed_lessons.length,
+      0,
     ]);
     const csv = [headers, ...rows].map((r) => r.map(String).join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
@@ -80,12 +80,12 @@ export default function AdminPage() {
 
   const avgXP = users.length ? Math.round(users.reduce((s, u) => s + u.xp, 0) / users.length) : 0;
   const avgStreak = users.length ? (users.reduce((s, u) => s + u.streak, 0) / users.length).toFixed(1) : '0';
-  const totalSessions = users.reduce((s, u) => s + (u.practiceData?.length || 0), 0);
+  const totalSessions = 0; // Practice sessions now tracked in Supabase
 
   const lessonCompletionRates = lessons.map((l) => ({
     title: l.title,
-    completions: users.filter((u) => u.completedLessons.includes(l.id)).length,
-    rate: users.length ? Math.round((users.filter((u) => u.completedLessons.includes(l.id)).length / users.length) * 100) : 0,
+    completions: users.filter((u) => u.completed_lessons.includes(l.id)).length,
+    rate: users.length ? Math.round((users.filter((u) => u.completed_lessons.includes(l.id)).length / users.length) * 100) : 0,
   })).sort((a, b) => b.completions - a.completions);
 
   return (
@@ -194,8 +194,8 @@ export default function AdminPage() {
                       <td className="px-4 py-3 font-semibold text-sky-600">{u.xp}</td>
                       <td className="px-4 py-3 text-gray-700">{u.level}</td>
                       <td className="px-4 py-3 text-orange-500 font-medium">🔥 {u.streak}</td>
-                      <td className="px-4 py-3 text-gray-700">{u.completedLessons.length}</td>
-                      <td className="px-4 py-3 text-gray-400 text-xs">{new Date(u.joinedAt).toLocaleDateString()}</td>
+                      <td className="px-4 py-3 text-gray-700">{u.completed_lessons.length}</td>
+                      <td className="px-4 py-3 text-gray-400 text-xs">{new Date(u.created_at).toLocaleDateString()}</td>
                     </tr>
                   ))}
                 </tbody>

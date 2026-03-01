@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Navbar from '@/components/Navbar';
-import { getCurrentUser, updateUser, addXP, addCoins, User } from '@/lib/auth';
+import { useAuth } from '@/contexts/AuthContext';
 import { getLessonById } from '@/data/lessons';
 import { vocabulary, VocabEntry } from '@/data/vocabulary';
 
@@ -57,7 +57,7 @@ export default function LessonPage() {
   const params = useParams();
   const lessonId = params.lessonId as string;
 
-  const [user, setUser] = useState<User | null>(null);
+  const { profile, updateProfile, loading } = useAuth();
   const [phase, setPhase] = useState<Phase>('intro');
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
   const [qIndex, setQIndex] = useState(0);
@@ -72,11 +72,9 @@ export default function LessonPage() {
   const lesson = getLessonById(lessonId);
 
   useEffect(() => {
-    const u = getCurrentUser();
-    if (!u) { router.push('/'); return; }
-    setUser(u);
-    setHearts(u.hearts);
-  }, [router]);
+    if (!loading && !profile) { router.push('/'); return; }
+    if (profile) setHearts(profile.hearts);
+  }, [profile, loading, router]);
 
   const startLesson = useCallback(() => {
     if (!lesson) return;
@@ -113,19 +111,30 @@ export default function LessonPage() {
     }
   };
 
-  const completeLesson = () => {
-    if (!lesson || !user) return;
+  const completeLesson = async () => {
+    if (!lesson || !profile) return;
     const accuracy = questions.length > 0 ? Math.round((score / questions.length) * 100) : 0;
     const xpEarned = Math.round(lesson.xpReward * (accuracy / 100));
     const coinsEarned = Math.round(lesson.coinReward * (accuracy / 100));
 
-    const updatedUser = addXP(xpEarned);
-    if (updatedUser) {
-      addCoins(coinsEarned);
-      const completedLessons = [...new Set([...(updatedUser.completedLessons || []), lesson.id])];
-      updateUser({ completedLessons, hearts: Math.min(5, hearts + 1) });
-      setUser({ ...updatedUser, completedLessons });
-    }
+    const newXp = profile.xp + xpEarned;
+    const newLevel = Math.floor(newXp / 100) + 1;
+    const today = new Date().toISOString().split('T')[0];
+    const wasYesterday = profile.last_active_date &&
+      new Date(today).getTime() - new Date(profile.last_active_date).getTime() === 86400000;
+    const newStreak = wasYesterday ? profile.streak + 1 :
+      profile.last_active_date === today ? profile.streak : 1;
+    const completedLessons = [...new Set([...(profile.completed_lessons || []), lesson.id])];
+
+    await updateProfile({
+      xp: newXp,
+      level: newLevel,
+      streak: newStreak,
+      last_active_date: today,
+      coins: profile.coins + coinsEarned,
+      hearts: Math.min(5, hearts + 1),
+      completed_lessons: completedLessons,
+    });
     setPhase('complete');
   };
 

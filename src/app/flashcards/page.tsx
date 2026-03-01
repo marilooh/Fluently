@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Navbar from '@/components/Navbar';
-import { getCurrentUser, addXP, addCoins, User } from '@/lib/auth';
+import { useAuth } from '@/contexts/AuthContext';
 import { vocabulary, VocabEntry, CATEGORIES, CATEGORY_LABELS, CATEGORY_ICONS, Category } from '@/data/vocabulary';
 import { getCardState, rateCard, getDueCards, Rating } from '@/lib/spaceRepetition';
 
@@ -11,7 +11,7 @@ type Mode = 'menu' | 'study';
 
 export default function FlashcardsPage() {
   const router = useRouter();
-  const [user, setUser] = useState<User | null>(null);
+  const { profile, updateProfile, loading } = useAuth();
   const [mode, setMode] = useState<Mode>('menu');
   const [selectedCategory, setSelectedCategory] = useState<Category | 'all'>('all');
   const [deck, setDeck] = useState<VocabEntry[]>([]);
@@ -22,10 +22,8 @@ export default function FlashcardsPage() {
   const [sessionComplete, setSessionComplete] = useState(false);
 
   useEffect(() => {
-    const u = getCurrentUser();
-    if (!u) { router.push('/'); return; }
-    setUser(u);
-  }, [router]);
+    if (!loading && !profile) router.push('/');
+  }, [profile, loading, router]);
 
   const startSession = useCallback((category: Category | 'all') => {
     const pool = category === 'all' ? vocabulary : vocabulary.filter((v) => v.category === category);
@@ -51,14 +49,18 @@ export default function FlashcardsPage() {
     rateCard(card.id, rating);
     setSessionStats((s) => ({ ...s, [label]: s[label] + 1 }));
     setRated(true);
-    setTimeout(() => {
+    setTimeout(async () => {
       if (cardIndex + 1 >= deck.length) {
-        // Session done — award XP
-        addXP(10);
-        addCoins(5);
+        // Session done — award XP + coins
+        if (profile) {
+          const newXp = profile.xp + 10;
+          await updateProfile({
+            xp: newXp,
+            level: Math.floor(newXp / 100) + 1,
+            coins: profile.coins + 5,
+          });
+        }
         setSessionComplete(true);
-        const updated = getCurrentUser();
-        if (updated) setUser(updated);
       } else {
         setCardIndex((i) => i + 1);
         setFlipped(false);
@@ -67,7 +69,8 @@ export default function FlashcardsPage() {
     }, 300);
   };
 
-  if (!user) return null;
+  if (!profile) return null;
+  const user = profile;
 
   const allIds = vocabulary.map((v) => v.id);
   const dueCount = getDueCards(allIds).length;
