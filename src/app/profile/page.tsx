@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Navbar from '@/components/Navbar';
-import { getCurrentUser, logout, User } from '@/lib/auth';
+import { useAuth, UserProfile } from '@/contexts/AuthContext';
 import { lessons } from '@/data/lessons';
 import { vocabulary } from '@/data/vocabulary';
 import { getAllCardStates } from '@/lib/spaceRepetition';
@@ -14,38 +14,38 @@ const ROLE_LABELS: Record<string, string> = {
 };
 
 const BADGES = [
-  { id: 'first_lesson', emoji: '🎓', label: 'First Lesson', desc: 'Complete your first lesson', check: (u: User) => u.completedLessons.length >= 1 },
-  { id: 'streak_3', emoji: '🔥', label: '3-Day Streak', desc: '3 days in a row', check: (u: User) => u.streak >= 3 },
-  { id: 'streak_7', emoji: '⚡', label: 'Week Warrior', desc: '7-day streak', check: (u: User) => u.streak >= 7 },
-  { id: 'xp_100', emoji: '💯', label: '100 XP Club', desc: 'Earn 100 XP', check: (u: User) => u.xp >= 100 },
-  { id: 'xp_500', emoji: '🌟', label: 'Star Learner', desc: 'Earn 500 XP', check: (u: User) => u.xp >= 500 },
-  { id: 'lessons_5', emoji: '📚', label: 'Bookworm', desc: 'Complete 5 lessons', check: (u: User) => u.completedLessons.length >= 5 },
-  { id: 'lessons_10', emoji: '🏆', label: 'Committed', desc: 'Complete 10 lessons', check: (u: User) => u.completedLessons.length >= 10 },
-  { id: 'level_5', emoji: '🚀', label: 'Level 5', desc: 'Reach level 5', check: (u: User) => u.level >= 5 },
-  { id: 'coins_200', emoji: '🪙', label: 'Coin Collector', desc: 'Accumulate 200 coins', check: (u: User) => u.coins >= 200 },
+  { id: 'first_lesson', emoji: '🎓', label: 'First Lesson', desc: 'Complete your first lesson', check: (u: UserProfile) => u.completed_lessons.length >= 1 },
+  { id: 'streak_3', emoji: '🔥', label: '3-Day Streak', desc: '3 days in a row', check: (u: UserProfile) => u.streak >= 3 },
+  { id: 'streak_7', emoji: '⚡', label: 'Week Warrior', desc: '7-day streak', check: (u: UserProfile) => u.streak >= 7 },
+  { id: 'xp_100', emoji: '💯', label: '100 XP Club', desc: 'Earn 100 XP', check: (u: UserProfile) => u.xp >= 100 },
+  { id: 'xp_500', emoji: '🌟', label: 'Star Learner', desc: 'Earn 500 XP', check: (u: UserProfile) => u.xp >= 500 },
+  { id: 'lessons_5', emoji: '📚', label: 'Bookworm', desc: 'Complete 5 lessons', check: (u: UserProfile) => u.completed_lessons.length >= 5 },
+  { id: 'lessons_10', emoji: '🏆', label: 'Committed', desc: 'Complete 10 lessons', check: (u: UserProfile) => u.completed_lessons.length >= 10 },
+  { id: 'level_5', emoji: '🚀', label: 'Level 5', desc: 'Reach level 5', check: (u: UserProfile) => u.level >= 5 },
+  { id: 'coins_200', emoji: '🪙', label: 'Coin Collector', desc: 'Accumulate 200 coins', check: (u: UserProfile) => u.coins >= 200 },
 ];
 
 export default function ProfilePage() {
   const router = useRouter();
-  const [user, setUser] = useState<User | null>(null);
+  const { profile, signOut, loading } = useAuth();
 
   useEffect(() => {
-    const u = getCurrentUser();
-    if (!u) { router.push('/'); return; }
-    setUser(u);
-  }, [router]);
+    if (!loading && !profile) router.push('/');
+  }, [profile, loading, router]);
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await signOut();
     router.push('/');
+    router.refresh();
   };
 
-  if (!user) return null;
+  if (!profile) return null;
+  const user = profile;
 
   const cardStates = getAllCardStates();
   const reviewedCards = Object.keys(cardStates).length;
   const masteredCards = Object.values(cardStates).filter((s) => s.interval > 7).length;
-  const completedLessons = user.completedLessons.length;
+  const completedLessons = user.completed_lessons.length;
   const totalLessons = lessons.length;
   const xpForNextLevel = user.level * 100;
   const xpInCurrentLevel = user.xp - (user.level - 1) * 100;
@@ -54,7 +54,7 @@ export default function ProfilePage() {
   const earnedBadges = BADGES.filter((b) => b.check(user));
   const unearnedBadges = BADGES.filter((b) => !b.check(user));
 
-  const joinDate = new Date(user.joinedAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  const joinDate = new Date(user.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
 
   return (
     <div className="min-h-screen bg-sky-50">
@@ -134,11 +134,11 @@ export default function ProfilePage() {
         </div>
 
         {/* Lesson history */}
-        {user.completedLessons.length > 0 && (
+        {user.completed_lessons.length > 0 && (
           <div className="bg-white rounded-2xl p-5 shadow-sm border border-sky-100 mb-6">
             <h2 className="font-bold text-gray-900 mb-4">Completed Lessons</h2>
             <div className="space-y-2">
-              {user.completedLessons.map((lessonId) => {
+              {user.completed_lessons.map((lessonId) => {
                 const lesson = lessons.find((l) => l.id === lessonId);
                 if (!lesson) return null;
                 return (

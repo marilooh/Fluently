@@ -4,22 +4,21 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Navbar from '@/components/Navbar';
-import { getCurrentUser, User } from '@/lib/auth';
+import { useAuth } from '@/contexts/AuthContext';
 import { lessons, isLessonUnlocked } from '@/data/lessons';
 import { CATEGORY_ICONS, CATEGORY_LABELS, CATEGORIES, Category } from '@/data/vocabulary';
 
 export default function LearnPage() {
   const router = useRouter();
-  const [user, setUser] = useState<User | null>(null);
+  const { profile, loading } = useAuth();
   const [activeCategory, setActiveCategory] = useState<Category | 'all'>('all');
 
   useEffect(() => {
-    const u = getCurrentUser();
-    if (!u) { router.push('/'); return; }
-    setUser(u);
-  }, [router]);
+    if (!loading && !profile) router.push('/');
+  }, [profile, loading, router]);
 
-  if (!user) return null;
+  if (!profile) return null;
+  const user = profile;
 
   const categories = CATEGORIES.filter((c) => lessons.some((l) => l.category === c));
   const filtered = activeCategory === 'all' ? lessons : lessons.filter((l) => l.category === activeCategory);
@@ -30,7 +29,7 @@ export default function LearnPage() {
       <div className="pt-4 md:pt-20 pb-24 md:pb-8 px-4 max-w-4xl mx-auto">
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-gray-900 mb-1">Lessons</h1>
-          <p className="text-gray-500 text-sm">{user.completedLessons.length}/{lessons.length} completed</p>
+          <p className="text-gray-500 text-sm">{user.completed_lessons.length}/{lessons.length} completed</p>
         </div>
 
         {/* Category filter */}
@@ -53,8 +52,8 @@ export default function LearnPage() {
         {/* Lessons grid */}
         <div className="space-y-3">
           {filtered.map((lesson) => {
-            const completed = user.completedLessons.includes(lesson.id);
-            const unlocked = isLessonUnlocked(lesson.id, user.completedLessons);
+            const completed = user.completed_lessons.includes(lesson.id);
+            const unlocked = isLessonUnlocked(lesson.id, user.completed_lessons);
             return (
               <div key={lesson.id}>
                 {unlocked ? (

@@ -3,17 +3,17 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Navbar from '@/components/Navbar';
-import { getCurrentUser, getAllUsersForAdmin, User } from '@/lib/auth';
+import { useAuth } from '@/contexts/AuthContext';
 
-const MOCK_USERS: Omit<User, 'id' | 'completedLessons' | 'practiceData' | 'equippedItems' | 'avatarItems'>[] = [
-  { name: 'Dr. Maria Santos', email: '', role: 'doctor', institution: 'UT Southwestern', joinedAt: '', xp: 480, level: 5, streak: 12, lastActiveDate: '', coins: 290, hearts: 5 },
-  { name: 'Alex Chen', email: '', role: 'student', institution: 'Harvard Med', joinedAt: '', xp: 410, level: 5, streak: 9, lastActiveDate: '', coins: 200, hearts: 5 },
-  { name: 'Jamie Ramirez', email: '', role: 'nurse', institution: 'NYU Langone', joinedAt: '', xp: 375, level: 4, streak: 14, lastActiveDate: '', coins: 150, hearts: 5 },
-  { name: 'Taylor Brooks', email: '', role: 'emt', institution: 'Chicago Fire', joinedAt: '', xp: 320, level: 4, streak: 7, lastActiveDate: '', coins: 180, hearts: 5 },
-  { name: 'Sam Nguyen', email: '', role: 'premed', institution: 'UCLA', joinedAt: '', xp: 285, level: 3, streak: 5, lastActiveDate: '', coins: 120, hearts: 5 },
-  { name: 'Jordan Miller', email: '', role: 'student', institution: 'Johns Hopkins', joinedAt: '', xp: 240, level: 3, streak: 4, lastActiveDate: '', coins: 95, hearts: 4 },
-  { name: 'Casey Torres', email: '', role: 'nurse', institution: 'Mass General', joinedAt: '', xp: 195, level: 2, streak: 3, lastActiveDate: '', coins: 80, hearts: 5 },
-  { name: 'Riley Kim', email: '', role: 'doctor', institution: 'Mayo Clinic', joinedAt: '', xp: 160, level: 2, streak: 2, lastActiveDate: '', coins: 60, hearts: 3 },
+const MOCK_USERS = [
+  { name: 'Dr. Maria Santos', role: 'doctor', institution: 'UT Southwestern', xp: 480, level: 5, streak: 12 },
+  { name: 'Alex Chen', role: 'student', institution: 'Harvard Med', xp: 410, level: 5, streak: 9 },
+  { name: 'Jamie Ramirez', role: 'nurse', institution: 'NYU Langone', xp: 375, level: 4, streak: 14 },
+  { name: 'Taylor Brooks', role: 'emt', institution: 'Chicago Fire', xp: 320, level: 4, streak: 7 },
+  { name: 'Sam Nguyen', role: 'premed', institution: 'UCLA', xp: 285, level: 3, streak: 5 },
+  { name: 'Jordan Miller', role: 'student', institution: 'Johns Hopkins', xp: 240, level: 3, streak: 4 },
+  { name: 'Casey Torres', role: 'nurse', institution: 'Mass General', xp: 195, level: 2, streak: 3 },
+  { name: 'Riley Kim', role: 'doctor', institution: 'Mayo Clinic', xp: 160, level: 2, streak: 2 },
 ];
 
 const ROLE_EMOJI: Record<string, string> = {
@@ -22,27 +22,25 @@ const ROLE_EMOJI: Record<string, string> = {
 
 export default function LeaderboardPage() {
   const router = useRouter();
-  const [user, setUser] = useState<User | null>(null);
+  const { profile, loading } = useAuth();
   const [board, setBoard] = useState<{ name: string; xp: number; level: number; streak: number; role: string; institution?: string }[]>([]);
   const [userRank, setUserRank] = useState<number | null>(null);
 
   useEffect(() => {
-    const u = getCurrentUser();
-    if (!u) { router.push('/'); return; }
-    setUser(u);
+    if (!loading && !profile) { router.push('/'); return; }
+    if (profile) {
+      const combined = [
+        ...MOCK_USERS,
+        { name: profile.name, xp: profile.xp, level: profile.level, streak: profile.streak, role: profile.role, institution: profile.institution },
+      ].sort((a, b) => b.xp - a.xp);
+      setBoard(combined.slice(0, 20));
+      const rank = combined.findIndex((p) => p.name === profile.name);
+      setUserRank(rank >= 0 ? rank + 1 : null);
+    }
+  }, [profile, loading, router]);
 
-    const realUsers = getAllUsersForAdmin();
-    const combined = [
-      ...MOCK_USERS,
-      ...realUsers.map((ru) => ({ name: ru.name, xp: ru.xp, level: ru.level, streak: ru.streak, role: ru.role, institution: ru.institution })),
-    ].sort((a, b) => b.xp - a.xp);
-
-    setBoard(combined.slice(0, 20));
-    const rank = combined.findIndex((p) => p.name === u.name);
-    setUserRank(rank >= 0 ? rank + 1 : null);
-  }, [router]);
-
-  if (!user) return null;
+  if (!profile) return null;
+  const user = profile;
 
   return (
     <div className="min-h-screen bg-sky-50">

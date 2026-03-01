@@ -3,12 +3,12 @@
 import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Navbar from '@/components/Navbar';
-import { getCurrentUser } from '@/lib/auth';
+import { useAuth } from '@/contexts/AuthContext';
 import { searchVocabulary, vocabulary, VocabEntry, CATEGORY_ICONS, CATEGORY_LABELS, CATEGORIES, Category } from '@/data/vocabulary';
 
 export default function SearchPage() {
   const router = useRouter();
-  const [authed, setAuthed] = useState(false);
+  const { profile, loading } = useAuth();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<VocabEntry[]>(vocabulary);
   const [activeCategory, setActiveCategory] = useState<Category | 'all'>('all');
@@ -17,11 +17,9 @@ export default function SearchPage() {
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    const u = getCurrentUser();
-    if (!u) { router.push('/'); return; }
-    setAuthed(true);
-    inputRef.current?.focus();
-  }, [router]);
+    if (!loading && !profile) { router.push('/'); return; }
+    if (profile) inputRef.current?.focus();
+  }, [profile, loading, router]);
 
   useEffect(() => {
     let r = searchVocabulary(query);
@@ -30,7 +28,7 @@ export default function SearchPage() {
     setResults(r);
   }, [query, activeCategory, activeDifficulty]);
 
-  if (!authed) return null;
+  if (!profile) return null;
 
   return (
     <div className="min-h-screen bg-sky-50">

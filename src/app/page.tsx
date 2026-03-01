@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { login, register } from '@/lib/auth';
+import { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
+import { createClient, isSupabaseConfigured } from '@/lib/supabase';
 
 type Role = 'student' | 'nurse' | 'emt' | 'doctor' | 'premed' | 'other';
 
@@ -15,8 +16,9 @@ const ROLES: { value: Role; label: string; emoji: string }[] = [
   { value: 'other', label: 'Other Healthcare', emoji: '🏥' },
 ];
 
-export default function LandingPage() {
+function LandingContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [mode, setMode] = useState<'landing' | 'login' | 'register'>('landing');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -24,19 +26,32 @@ export default function LandingPage() {
   const [role, setRole] = useState<Role>('student');
   const [institution, setInstitution] = useState('');
   const [error, setError] = useState('');
+  const [info, setInfo] = useState('');
   const [loading, setLoading] = useState(false);
+  const configured = isSupabaseConfigured();
+
+  useEffect(() => {
+    if (searchParams?.get('error') === 'auth_callback_failed') {
+      setError('Authentication failed. Please try again.');
+      setMode('login');
+    }
+  }, [searchParams]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
-    const user = login(email, password);
-    if (user) {
-      router.push('/dashboard');
+
+    const supabase = createClient();
+    const { error: err } = await supabase.auth.signInWithPassword({ email, password });
+
+    if (err) {
+      setError(err.message);
+      setLoading(false);
     } else {
-      setError('Invalid email or password. Please try again.');
+      router.push('/dashboard');
+      router.refresh();
     }
-    setLoading(false);
   };
 
   const handleRegister = async (e: React.FormEvent) => {
@@ -45,9 +60,55 @@ export default function LandingPage() {
     if (!name.trim()) { setError('Please enter your name.'); return; }
     if (!email.includes('@')) { setError('Please enter a valid email.'); return; }
     if (password.length < 6) { setError('Password must be at least 6 characters.'); return; }
+
     setLoading(true);
-    register(email, password, name, role, institution || undefined);
-    router.push('/dashboard');
+    const supabase = createClient();
+
+    const { data, error: signUpErr } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo: `${window.location.origin}/auth/callback`,
+        data: { name, role, institution },
+      },
+    });
+
+    if (signUpErr) {
+      setError(signUpErr.message);
+      setLoading(false);
+      return;
+    }
+
+    if (data.user) {
+      const today = new Date().toISOString().split('T')[0];
+      await supabase.from('user_profiles').upsert({
+        id: data.user.id,
+        name,
+        role,
+        institution: institution || null,
+        xp: 0,
+        level: 1,
+        streak: 0,
+        last_active_date: today,
+        coins: 100,
+        hearts: 5,
+        avatar_items: ['scrubs_white', 'badge_basic'],
+        equipped_items: ['scrubs_white', 'badge_basic'],
+        completed_lessons: [],
+        placement_level: null,
+        onboarding_completed: false,
+      });
+
+      if (!data.session) {
+        // Email confirmation required
+        setInfo('Check your email to confirm your account, then come back to sign in.');
+        setMode('login');
+        setLoading(false);
+      } else {
+        router.push('/onboarding');
+        router.refresh();
+      }
+    }
     setLoading(false);
   };
 
@@ -55,7 +116,8 @@ export default function LandingPage() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-sky-50 to-teal-50 flex items-center justify-center p-4">
         <div className="w-full max-w-md">
-          <button onClick={() => setMode('landing')} className="mb-6 text-sky-600 flex items-center gap-1 hover:underline text-sm">
+          <button onClick={() => { setMode('landing'); setError(''); setInfo(''); }}
+            className="mb-6 text-sky-600 flex items-center gap-1 hover:underline text-sm">
             ← Back
           </button>
           <div className="bg-white rounded-2xl shadow-lg p-8">
@@ -64,26 +126,49 @@ export default function LandingPage() {
               <h1 className="text-2xl font-bold text-gray-900 mt-2">Welcome back</h1>
               <p className="text-gray-500 text-sm">Continue your medical Spanish journey</p>
             </div>
+
+            {!configured && (
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-4 text-sm text-amber-800">
+                <strong>Setup required:</strong> Add <code className="bg-amber-100 px-1 rounded">NEXT_PUBLIC_SUPABASE_URL</code> and <code className="bg-amber-100 px-1 rounded">NEXT_PUBLIC_SUPABASE_ANON_KEY</code> to your environment variables.
+              </div>
+            )}
+
+            {info && (
+              <div className="bg-sky-50 border border-sky-200 rounded-xl p-4 mb-4 text-sm text-sky-800">
+                {info}
+              </div>
+            )}
+
             <form onSubmit={handleLogin} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required placeholder="you@university.edu"
+                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required
+                  placeholder="you@university.edu"
                   className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
-                <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required placeholder="••••••••"
+                <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required
+                  placeholder="••••••••"
                   className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400" />
               </div>
+
+              <div className="text-right">
+                <Link href="/auth/reset" className="text-sky-600 text-sm hover:underline">Forgot password?</Link>
+              </div>
+
               {error && <p className="text-red-500 text-sm bg-red-50 rounded-lg px-3 py-2">{error}</p>}
-              <button type="submit" disabled={loading}
+
+              <button type="submit" disabled={loading || !configured}
                 className="w-full bg-sky-500 hover:bg-sky-600 text-white font-semibold rounded-xl py-3 transition-colors disabled:opacity-50">
                 {loading ? 'Signing in…' : 'Sign In'}
               </button>
             </form>
+
             <p className="text-center text-sm text-gray-500 mt-4">
               New to Fluently?{' '}
-              <button onClick={() => setMode('register')} className="text-sky-600 font-medium hover:underline">Create account</button>
+              <button onClick={() => { setMode('register'); setError(''); setInfo(''); }}
+                className="text-sky-600 font-medium hover:underline">Create account</button>
             </p>
           </div>
         </div>
@@ -95,7 +180,8 @@ export default function LandingPage() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-sky-50 to-teal-50 flex items-center justify-center p-4">
         <div className="w-full max-w-md">
-          <button onClick={() => setMode('landing')} className="mb-6 text-sky-600 flex items-center gap-1 hover:underline text-sm">
+          <button onClick={() => { setMode('landing'); setError(''); }}
+            className="mb-6 text-sky-600 flex items-center gap-1 hover:underline text-sm">
             ← Back
           </button>
           <div className="bg-white rounded-2xl shadow-lg p-8">
@@ -104,20 +190,30 @@ export default function LandingPage() {
               <h1 className="text-2xl font-bold text-gray-900 mt-2">Create your account</h1>
               <p className="text-gray-500 text-sm">Join thousands of healthcare professionals</p>
             </div>
+
+            {!configured && (
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-4 text-sm text-amber-800">
+                <strong>Setup required:</strong> Supabase environment variables are not configured.
+              </div>
+            )}
+
             <form onSubmit={handleRegister} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
-                <input type="text" value={name} onChange={(e) => setName(e.target.value)} required placeholder="Dr. Jane Smith"
+                <input type="text" value={name} onChange={(e) => setName(e.target.value)} required
+                  placeholder="Dr. Jane Smith"
                   className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required placeholder="you@university.edu"
+                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required
+                  placeholder="you@university.edu"
                   className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
-                <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required placeholder="Min. 6 characters"
+                <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required
+                  placeholder="Min. 6 characters"
                   className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400" />
               </div>
               <div>
@@ -136,11 +232,14 @@ export default function LandingPage() {
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Institution <span className="text-gray-400 font-normal">(optional)</span>
                 </label>
-                <input type="text" value={institution} onChange={(e) => setInstitution(e.target.value)} placeholder="University / Hospital name"
+                <input type="text" value={institution} onChange={(e) => setInstitution(e.target.value)}
+                  placeholder="University / Hospital name"
                   className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400" />
               </div>
+
               {error && <p className="text-red-500 text-sm bg-red-50 rounded-lg px-3 py-2">{error}</p>}
-              <button type="submit" disabled={loading}
+
+              <button type="submit" disabled={loading || !configured}
                 className="w-full bg-sky-500 hover:bg-sky-600 text-white font-semibold rounded-xl py-3 transition-colors disabled:opacity-50">
                 {loading ? 'Creating account…' : 'Start Learning Free'}
               </button>
@@ -148,9 +247,11 @@ export default function LandingPage() {
                 By registering, you consent to your anonymized usage data being used to improve Fluently.
               </p>
             </form>
+
             <p className="text-center text-sm text-gray-500 mt-4">
               Already have an account?{' '}
-              <button onClick={() => setMode('login')} className="text-sky-600 font-medium hover:underline">Sign in</button>
+              <button onClick={() => { setMode('login'); setError(''); }}
+                className="text-sky-600 font-medium hover:underline">Sign in</button>
             </p>
           </div>
         </div>
@@ -212,10 +313,10 @@ export default function LandingPage() {
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-16">
           {[
             { icon: '🎮', title: 'Gamified Learning', desc: 'Earn XP, build streaks, level up — just like Duolingo, but for medical Spanish.' },
-            { icon: '🃏', title: 'Smart Flashcards', desc: 'Spaced repetition system ensures you remember terms when it matters most in the clinic.' },
+            { icon: '🃏', title: 'Smart Flashcards', desc: 'Spaced repetition ensures you remember terms when it matters most in the clinic.' },
             { icon: '🔍', title: 'Medical Dictionary', desc: 'Instantly search 200+ anatomical terms, diagnoses, symptoms, and clinical phrases.' },
             { icon: '👔', title: 'Character Builder', desc: 'Customize your avatar with scrubs, caps, stethoscopes, and accessories.' },
-            { icon: '📊', title: 'Progress Tracker', desc: 'Monitor your growth across all medical categories with detailed analytics.' },
+            { icon: '🗺️', title: 'Skill Tree', desc: 'Visual roadmap showing your progression through all medical Spanish topics.' },
             { icon: '🏆', title: 'Leaderboard', desc: 'Compete with peers, earn badges, and climb the ranks in your cohort.' },
           ].map((f) => (
             <div key={f.title} className="bg-white rounded-2xl p-6 shadow-sm border border-sky-50 card-hover">
@@ -253,5 +354,13 @@ export default function LandingPage() {
         © 2025 Fluently · Medical Spanish for Healthcare Professionals · Beta Prototype
       </footer>
     </div>
+  );
+}
+
+export default function LandingPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-gradient-to-br from-sky-50 to-teal-50" />}>
+      <LandingContent />
+    </Suspense>
   );
 }

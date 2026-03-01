@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Navbar from '@/components/Navbar';
-import { getCurrentUser, updateUser, spendCoins, unlockItem, equipItem, User } from '@/lib/auth';
+import { useAuth } from '@/contexts/AuthContext';
 import { shopItems, ShopItem, ItemSlot, RARITY_COLORS, RARITY_BADGE, getItemsBySlot } from '@/data/shopItems';
 
 const SLOTS: { slot: ItemSlot; label: string; emoji: string }[] = [
@@ -60,43 +60,46 @@ function Avatar({ equippedItems, items }: { equippedItems: string[]; items: Shop
 
 export default function CharacterPage() {
   const router = useRouter();
-  const [user, setUser] = useState<User | null>(null);
+  const { profile, updateProfile, loading } = useAuth();
   const [activeSlot, setActiveSlot] = useState<ItemSlot>('scrubs');
   const [message, setMessage] = useState('');
 
-  const refreshUser = () => {
-    const u = getCurrentUser();
-    if (u) setUser(u);
-  };
-
   useEffect(() => {
-    const u = getCurrentUser();
-    if (!u) { router.push('/'); return; }
-    setUser(u);
-  }, [router]);
+    if (!loading && !profile) router.push('/');
+  }, [profile, loading, router]);
 
-  const handlePurchase = (item: ShopItem) => {
-    if (!user) return;
-    if (user.avatarItems.includes(item.id)) {
+  const handlePurchase = async (item: ShopItem) => {
+    if (!profile) return;
+    const owned = profile.avatar_items.includes(item.id);
+    if (owned) {
       // Already owned — just equip
-      equipItem(item.id);
+      const slot = item.slot;
+      const filtered = profile.equipped_items.filter((i) => {
+        const s = shopItems.find((si) => si.id === i);
+        return s ? s.slot !== slot : true;
+      });
+      await updateProfile({ equipped_items: [...filtered, item.id] });
       setMessage(`${item.emoji} ${item.name} equipped!`);
-      refreshUser();
-      return;
-    }
-    const success = spendCoins(item.price);
-    if (success) {
-      unlockItem(item.id);
-      equipItem(item.id);
+    } else if (profile.coins >= item.price) {
+      const slot = item.slot;
+      const filtered = profile.equipped_items.filter((i) => {
+        const s = shopItems.find((si) => si.id === i);
+        return s ? s.slot !== slot : true;
+      });
+      await updateProfile({
+        coins: profile.coins - item.price,
+        avatar_items: [...profile.avatar_items, item.id],
+        equipped_items: [...filtered, item.id],
+      });
       setMessage(`🎉 Purchased & equipped ${item.name}!`);
-      refreshUser();
     } else {
-      setMessage(`❌ Not enough coins! You need ${item.price - (user?.coins || 0)} more coins.`);
+      setMessage(`❌ Not enough coins! You need ${item.price - profile.coins} more coins.`);
     }
     setTimeout(() => setMessage(''), 3000);
   };
 
-  if (!user) return null;
+  if (!profile) return null;
+  const user = profile;
 
   const slotItems = getItemsBySlot(activeSlot);
 
@@ -120,7 +123,7 @@ export default function CharacterPage() {
           <div className="md:col-span-1">
             <div className="bg-white rounded-3xl p-6 shadow-sm border border-sky-100 text-center sticky top-24">
               <p className="text-sm font-medium text-gray-500 mb-4">Your Avatar</p>
-              <Avatar equippedItems={user.equippedItems} items={shopItems} />
+              <Avatar equippedItems={user.equipped_items} items={shopItems} />
               <p className="font-bold text-gray-900 mt-4 text-sm">{user.name}</p>
               <p className="text-gray-400 text-xs capitalize">{user.role}</p>
               <div className="flex items-center justify-center gap-1 mt-3 bg-yellow-50 rounded-xl py-2 px-4">
@@ -146,8 +149,8 @@ export default function CharacterPage() {
 
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               {slotItems.map((item) => {
-                const owned = user.avatarItems.includes(item.id);
-                const equipped = user.equippedItems.includes(item.id);
+                const owned = user.avatar_items.includes(item.id);
+                const equipped = user.equipped_items.includes(item.id);
                 return (
                   <button key={item.id} onClick={() => handlePurchase(item)}
                     className={`text-left border-2 rounded-2xl p-4 transition-all card-hover ${RARITY_COLORS[item.rarity]}
