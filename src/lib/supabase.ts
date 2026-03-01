@@ -9,6 +9,14 @@ const SUPABASE_ANON_KEY =
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ??
   'sb_publishable_YhFA_FTCzGU0CsAcZauPcg_hLciIJPH';
 
+if (!SUPABASE_URL.startsWith('https://') || !SUPABASE_ANON_KEY) {
+  throw new Error(
+    'Invalid Supabase configuration. ' +
+    'Ensure NEXT_PUBLIC_SUPABASE_URL (must start with https://) ' +
+    'and NEXT_PUBLIC_SUPABASE_ANON_KEY are set correctly.'
+  );
+}
+
 export function createClient() {
   return createBrowserClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 }
