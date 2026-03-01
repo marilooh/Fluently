@@ -1,19 +1,21 @@
-import { createBrowserClient } from '@supabase/ssr';
+import { createBrowserClient } from "@supabase/ssr";
 
-// Env vars take precedence; the fallbacks are the real project credentials
-// (anon key is publishable/public by design — safe in browser code).
-const SUPABASE_URL =
-  process.env.NEXT_PUBLIC_SUPABASE_URL ??
-  'https://fkhjuudfjnyjpmvtggkf.supabase.co';
-const SUPABASE_ANON_KEY =
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ??
-  'sb_publishable_YhFA_FTCzGU0CsAcZauPcg_hLciIJPH';
+// Read from env only (no hardcoded fallbacks)
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
+
+const SUPABASE_KEY =
+  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY ??
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
 export function createClient() {
-  return createBrowserClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  if (!SUPABASE_URL || !SUPABASE_KEY) {
+    throw new Error(
+      "Supabase is not configured. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY (or NEXT_PUBLIC_SUPABASE_ANON_KEY)."
+    );
+  }
+  return createBrowserClient(SUPABASE_URL, SUPABASE_KEY);
 }
 
 export function isSupabaseConfigured(): boolean {
-  // Always true — real credentials are baked in as fallbacks
-  return true;
+  return Boolean(SUPABASE_URL && SUPABASE_KEY);
 }
