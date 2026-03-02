@@ -112,14 +112,15 @@ function SkillTree({ completedLessons }: { completedLessons: string[] }) {
 
 export default function Dashboard() {
   const router = useRouter();
-  const { profile, loading } = useAuth();
+  const { user: authUser, profile, loading } = useAuth();
 
   useEffect(() => {
-    if (!loading && !profile) router.push('/');
-    if (!loading && profile && !profile.onboarding_completed) router.push('/onboarding');
-  }, [profile, loading, router]);
+    if (!loading && !authUser) router.push('/');
+    if (!loading && authUser && !profile) router.push('/onboarding');
+    if (!loading && authUser && profile && !profile.onboarding_completed) router.push('/onboarding');
+  }, [authUser, profile, loading, router]);
 
-  if (!profile) return null;
+  if (loading || !authUser || !profile) return null;
   const user = profile;
 
   const xpForNextLevel = user.level * 100;

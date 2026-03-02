@@ -22,12 +22,13 @@ const ROLE_EMOJI: Record<string, string> = {
 
 export default function LeaderboardPage() {
   const router = useRouter();
-  const { profile, loading } = useAuth();
+  const { user: authUser, profile, loading } = useAuth();
   const [board, setBoard] = useState<{ name: string; xp: number; level: number; streak: number; role: string; institution?: string }[]>([]);
   const [userRank, setUserRank] = useState<number | null>(null);
 
   useEffect(() => {
-    if (!loading && !profile) { router.push('/'); return; }
+    if (!loading && !authUser) { router.push('/'); return; }
+    if (!loading && authUser && !profile) { router.push('/onboarding'); return; }
     if (profile) {
       const combined = [
         ...MOCK_USERS,
@@ -37,9 +38,9 @@ export default function LeaderboardPage() {
       const rank = combined.findIndex((p) => p.name === profile.name);
       setUserRank(rank >= 0 ? rank + 1 : null);
     }
-  }, [profile, loading, router]);
+  }, [authUser, profile, loading, router]);
 
-  if (!profile) return null;
+  if (loading || !authUser || !profile) return null;
   const user = profile;
 
   return (

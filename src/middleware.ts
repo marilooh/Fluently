@@ -14,19 +14,22 @@ const PROTECTED_PATHS = [
 ];
 
 export async function middleware(request: NextRequest) {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  // Support both the new publishable key name and the legacy anon key name
+  const supabaseKey =
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY ??
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
   // Skip if Supabase isn't configured (allows app to load without env vars)
-  if (
-    !process.env.NEXT_PUBLIC_SUPABASE_URL ||
-    !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-  ) {
+  if (!supabaseUrl || !supabaseKey) {
     return NextResponse.next();
   }
 
   let supabaseResponse = NextResponse.next({ request });
 
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    supabaseUrl,
+    supabaseKey,
     {
       cookies: {
         getAll() {
@@ -52,7 +55,6 @@ export async function middleware(request: NextRequest) {
 
   const pathname = request.nextUrl.pathname;
   const isProtected = PROTECTED_PATHS.some((p) => pathname.startsWith(p));
-  const isAuthPage = pathname.startsWith('/auth');
 
   // Redirect unauthenticated users away from protected pages
   if (!user && isProtected) {
