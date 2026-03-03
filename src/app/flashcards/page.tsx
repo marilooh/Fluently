@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Navbar from '@/components/Navbar';
 import { useAuth } from '@/contexts/AuthContext';
 import { vocabulary, VocabEntry, CATEGORIES, CATEGORY_LABELS, CATEGORY_ICONS, Category } from '@/data/vocabulary';
-import { getCardState, rateCard, getDueCards, Rating } from '@/lib/spaceRepetition';
+import { getCardState, rateCard, getDueCards, initForUser, Rating } from '@/lib/spaceRepetition';
 
 type Mode = 'menu' | 'study';
 
@@ -23,8 +23,8 @@ export default function FlashcardsPage() {
 
   useEffect(() => {
     if (!loading && !authUser) router.push('/');
-    if (!loading && authUser && !profile) router.push('/onboarding');
-  }, [authUser, profile, loading, router]);
+    if (!loading && authUser) initForUser(authUser.id);
+  }, [authUser, loading, router]);
 
   const startSession = useCallback((category: Category | 'all') => {
     const pool = category === 'all' ? vocabulary : vocabulary.filter((v) => v.category === category);
