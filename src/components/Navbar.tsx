@@ -50,15 +50,15 @@ export default function Navbar() {
             <>
               <div className="flex items-center gap-2 bg-amber-50 px-3 py-1.5 rounded-xl">
                 <span>🔥</span>
-                <span className="text-amber-600 font-bold text-sm">{profile.streak}</span>
+                <span className="text-amber-600 font-bold text-sm">{profile.streak ?? 0}</span>
               </div>
               <div className="flex items-center gap-2 bg-sky-50 px-3 py-1.5 rounded-xl">
                 <span>⚡</span>
-                <span className="text-sky-600 font-bold text-sm">{profile.xp} XP</span>
+                <span className="text-sky-600 font-bold text-sm">{profile.xp ?? 0} XP</span>
               </div>
               <div className="flex items-center gap-2 bg-yellow-50 px-3 py-1.5 rounded-xl">
                 <span>🪙</span>
-                <span className="text-yellow-600 font-bold text-sm">{profile.coins}</span>
+                <span className="text-yellow-600 font-bold text-sm">{profile.coins ?? 0}</span>
               </div>
             </>
           )}

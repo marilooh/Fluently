@@ -5,24 +5,27 @@ import type { User } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase';
 
 export interface UserProfile {
+  // Columns that exist in the Supabase table
   id: string;
   email?: string;
-  name: string;
-  role: 'student' | 'nurse' | 'emt' | 'doctor' | 'premed' | 'other';
-  institution?: string;
+  display_name: string;           // NOTE: Supabase column is display_name (not name)
   xp: number;
-  level: number;
-  streak: number;
-  last_active_date: string;
   coins: number;
-  hearts: number;
-  avatar_items: string[];
-  equipped_items: string[];
   completed_lessons: string[];
-  placement_level: 'beginner' | 'intermediate' | 'advanced' | null;
-  onboarding_completed: boolean;
   created_at: string;
   updated_at: string;
+
+  // Columns that must be added via ALTER TABLE (see supabase-schema.sql)
+  role?: 'student' | 'nurse' | 'emt' | 'doctor' | 'premed' | 'other';
+  institution?: string;
+  level?: number;
+  streak?: number;
+  last_active_date?: string;
+  hearts?: number;
+  avatar_items?: string[];
+  equipped_items?: string[];
+  placement_level?: 'beginner' | 'intermediate' | 'advanced' | null;
+  onboarding_completed?: boolean;
 }
 
 interface AuthContextType {
@@ -80,18 +83,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .from('user_profiles')
         .upsert({
           id: userId,
-          name: (meta.name as string) || 'User',
+          email: (meta.email as string) || null,
+          display_name: (meta.name as string) || 'User',
+          xp: 0,
+          coins: 100,
+          completed_lessons: [],
+          // Extra columns — only saved if they've been added via ALTER TABLE
           role: (meta.role as string) || 'student',
           institution: (meta.institution as string) || null,
-          xp: 0,
           level: 1,
           streak: 0,
           last_active_date: today,
-          coins: 100,
           hearts: 5,
           avatar_items: ['scrubs_white', 'badge_basic'],
           equipped_items: ['scrubs_white', 'badge_basic'],
-          completed_lessons: [],
           placement_level: null,
           onboarding_completed: true,
         })
@@ -135,11 +140,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       async (event, session) => {
         setUser(session?.user ?? null);
         if (session?.user) {
-          // Pass user_metadata so fetchProfile can auto-create the row if needed
-          await fetchProfile(
-            session.user.id,
-            (session.user.user_metadata as Record<string, unknown>) ?? undefined
-          );
+          // Merge email into metadata so fetchProfile can include it when auto-creating the row
+          await fetchProfile(session.user.id, {
+            ...(session.user.user_metadata as Record<string, unknown>),
+            email: session.user.email,
+          });
         } else {
           setProfile(null);
         }

@@ -87,18 +87,20 @@ function AuthContent() {
       const today = new Date().toISOString().split('T')[0];
       await supabase.from('user_profiles').upsert({
         id: data.user.id,
-        name,
+        email: data.user.email,
+        display_name: name,
+        xp: 0,
+        coins: 100,
+        completed_lessons: [],
+        // Extra columns — only saved if they've been added via ALTER TABLE
         role,
         institution: institution || null,
-        xp: 0,
         level: 1,
         streak: 0,
         last_active_date: today,
-        coins: 100,
         hearts: 5,
         avatar_items: ['scrubs_white', 'badge_basic'],
         equipped_items: ['scrubs_white', 'badge_basic'],
-        completed_lessons: [],
         placement_level: null,
         onboarding_completed: true,
       });

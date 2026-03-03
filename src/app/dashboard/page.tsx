@@ -21,8 +21,9 @@ export default function Dashboard() {
   if (loading || !authUser || !profile) return null;
 
   const user = profile;
-  const xpForNextLevel = user.level * 100;
-  const xpInCurrentLevel = user.xp - (user.level - 1) * 100;
+  const level = user.level ?? 1;
+  const xpForNextLevel = level * 100;
+  const xpInCurrentLevel = (user.xp ?? 0) - (level - 1) * 100;
   const xpProgress = Math.min((xpInCurrentLevel / xpForNextLevel) * 100, 100);
 
   const completedCount = user.completed_lessons.length;
@@ -37,24 +38,24 @@ export default function Dashboard() {
         <div className="bg-gradient-to-r from-sky-500 to-teal-500 rounded-3xl p-6 text-white mb-6 slide-up">
           <div className="flex items-center justify-between flex-wrap gap-4">
             <div>
-              <p className="text-sky-100 text-sm mb-1">¡Hola, {user.name.split(' ')[0]}!</p>
+              <p className="text-sky-100 text-sm mb-1">¡Hola, {(user.display_name || '').split(' ')[0]}!</p>
               <h1 className="text-2xl font-bold">Ready to learn? 💪</h1>
-              <p className="text-sky-100 text-sm mt-1">Level {user.level} · {user.xp} XP total</p>
+              <p className="text-sky-100 text-sm mt-1">Level {level} · {user.xp ?? 0} XP total</p>
             </div>
             <div className="flex gap-3">
               <div className="bg-white/20 rounded-2xl p-3 text-center min-w-[64px]">
                 <div className="text-2xl">🔥</div>
-                <div className="text-xl font-bold">{user.streak}</div>
+                <div className="text-xl font-bold">{user.streak ?? 0}</div>
                 <div className="text-xs text-sky-100">Streak</div>
               </div>
               <div className="bg-white/20 rounded-2xl p-3 text-center min-w-[64px]">
                 <div className="text-2xl">🪙</div>
-                <div className="text-xl font-bold">{user.coins}</div>
+                <div className="text-xl font-bold">{user.coins ?? 0}</div>
                 <div className="text-xs text-sky-100">Coins</div>
               </div>
               <div className="bg-white/20 rounded-2xl p-3 text-center min-w-[64px]">
                 <div className="text-2xl">❤️</div>
-                <div className="text-xl font-bold">{user.hearts}</div>
+                <div className="text-xl font-bold">{user.hearts ?? 5}</div>
                 <div className="text-xs text-sky-100">Hearts</div>
               </div>
             </div>
@@ -63,8 +64,8 @@ export default function Dashboard() {
           {/* XP bar */}
           <div className="mt-4">
             <div className="flex justify-between text-xs text-sky-100 mb-1">
-              <span>Level {user.level}</span>
-              <span>{xpInCurrentLevel} / {xpForNextLevel} XP to Level {user.level + 1}</span>
+              <span>Level {level}</span>
+              <span>{xpInCurrentLevel} / {xpForNextLevel} XP to Level {level + 1}</span>
             </div>
             <div className="bg-white/20 rounded-full h-3 overflow-hidden">
               <div className="bg-white rounded-full h-3 transition-all duration-700" style={{ width: `${xpProgress}%` }} />

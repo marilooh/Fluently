@@ -74,7 +74,7 @@ export default function LessonPage() {
 
   useEffect(() => {
     if (!loading && !authUser) { router.push('/'); return; }
-    if (profile) setHearts(profile.hearts);
+    if (profile) setHearts(profile.hearts ?? 5);
   }, [authUser, profile, loading, router]);
 
   const startLesson = useCallback(() => {
@@ -121,10 +121,11 @@ export default function LessonPage() {
     const newXp = profile.xp + xpEarned;
     const newLevel = Math.floor(newXp / 100) + 1;
     const today = new Date().toISOString().split('T')[0];
+    const currentStreak = profile.streak ?? 0;
     const wasYesterday = profile.last_active_date &&
       new Date(today).getTime() - new Date(profile.last_active_date).getTime() === 86400000;
-    const newStreak = wasYesterday ? profile.streak + 1 :
-      profile.last_active_date === today ? profile.streak : 1;
+    const newStreak = wasYesterday ? currentStreak + 1 :
+      profile.last_active_date === today ? currentStreak : 1;
     const completedLessons = [...new Set([...(profile.completed_lessons || []), lesson.id])];
 
     const saved = await updateProfile({
