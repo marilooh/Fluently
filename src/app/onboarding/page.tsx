@@ -137,7 +137,7 @@ type Phase = 'welcome' | 'quiz' | 'result';
 
 export default function OnboardingPage() {
   const router = useRouter();
-  const { profile, updateProfile, loading } = useAuth();
+  const { user, profile, updateProfile, loading } = useAuth();
   const [phase, setPhase] = useState<Phase>('welcome');
   const [qIndex, setQIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
@@ -146,16 +146,15 @@ export default function OnboardingPage() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (!loading && !profile) router.push('/');
-  }, [profile, loading, router]);
+    // Only redirect unauthenticated users — if !profile but user exists, we stay
+    // here to complete setup (profile row may not have been created yet)
+    if (!loading && !user) router.push('/');
+    if (!loading && user && profile?.onboarding_completed && phase === 'welcome') {
+      router.push('/dashboard');
+    }
+  }, [user, profile, loading, phase, router]);
 
-  if (!profile) return null;
-
-  // Already completed onboarding
-  if (profile.onboarding_completed && phase === 'welcome') {
-    router.push('/dashboard');
-    return null;
-  }
+  if (loading || !user) return null;
 
   const q = QUIZ[qIndex];
   const totalQuestions = QUIZ.length;
@@ -185,13 +184,40 @@ export default function OnboardingPage() {
 
   const finishOnboarding = async (result: { level: 'beginner' | 'intermediate' | 'advanced'; lessonsToSkip: string[] }) => {
     setSaving(true);
-    await updateProfile({
-      placement_level: result.level,
-      completed_lessons: result.lessonsToSkip,
-      onboarding_completed: true,
-    });
+    if (profile) {
+      // Normal path: profile row exists, update it
+      await updateProfile({
+        placement_level: result.level,
+        completed_lessons: result.lessonsToSkip,
+        onboarding_completed: true,
+      });
+    } else if (user) {
+      // Edge case: profile row was never created (signup upsert failed)
+      // Create it now so the user isn't stuck forever
+      const { createClient } = await import('@/lib/supabase');
+      const supabase = createClient();
+      const today = new Date().toISOString().split('T')[0];
+      await supabase.from('user_profiles').upsert({
+        id: user.id,
+        name: user.user_metadata?.name ?? user.email?.split('@')[0] ?? 'User',
+        role: user.user_metadata?.role ?? 'other',
+        institution: user.user_metadata?.institution ?? null,
+        xp: 0,
+        level: 1,
+        streak: 0,
+        last_active_date: today,
+        coins: 100,
+        hearts: 5,
+        avatar_items: ['scrubs_white', 'badge_basic'],
+        equipped_items: ['scrubs_white', 'badge_basic'],
+        completed_lessons: result.lessonsToSkip,
+        placement_level: result.level,
+        onboarding_completed: true,
+      });
+    }
     setSaving(false);
     router.push('/dashboard');
+    router.refresh();
   };
 
   if (phase === 'welcome') {
@@ -202,7 +228,7 @@ export default function OnboardingPage() {
             <div className="text-5xl mb-4">🩺</div>
             <h1 className="text-2xl font-bold text-gray-900 mb-2">Welcome to Fluently!</h1>
             <p className="text-gray-500 mb-2">
-              ¡Hola, <strong>{profile.name.split(' ')[0]}</strong>!
+              ¡Hola, <strong>{profile?.name?.split(' ')[0] ?? user.email?.split('@')[0] ?? 'there'}</strong>!
             </p>
             <p className="text-gray-600 text-sm leading-relaxed mb-6">
               Let&apos;s quickly assess your Spanish level so we can skip what you already know

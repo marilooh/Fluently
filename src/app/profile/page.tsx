@@ -27,11 +27,12 @@ const BADGES = [
 
 export default function ProfilePage() {
   const router = useRouter();
-  const { profile, signOut, loading } = useAuth();
+  const { user: authUser, profile, signOut, loading } = useAuth();
 
   useEffect(() => {
-    if (!loading && !profile) router.push('/');
-  }, [profile, loading, router]);
+    if (!loading && !authUser) router.push('/');
+    if (!loading && authUser && !profile) router.push('/onboarding');
+  }, [authUser, profile, loading, router]);
 
   const handleLogout = async () => {
     await signOut();
@@ -39,7 +40,7 @@ export default function ProfilePage() {
     router.refresh();
   };
 
-  if (!profile) return null;
+  if (loading || !authUser || !profile) return null;
   const user = profile;
 
   const cardStates = getAllCardStates();

@@ -57,7 +57,7 @@ export default function LessonPage() {
   const params = useParams();
   const lessonId = params.lessonId as string;
 
-  const { profile, updateProfile, loading } = useAuth();
+  const { user: authUser, profile, updateProfile, loading } = useAuth();
   const [phase, setPhase] = useState<Phase>('intro');
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
   const [qIndex, setQIndex] = useState(0);
@@ -72,9 +72,10 @@ export default function LessonPage() {
   const lesson = getLessonById(lessonId);
 
   useEffect(() => {
-    if (!loading && !profile) { router.push('/'); return; }
+    if (!loading && !authUser) { router.push('/'); return; }
+    if (!loading && authUser && !profile) { router.push('/onboarding'); return; }
     if (profile) setHearts(profile.hearts);
-  }, [profile, loading, router]);
+  }, [authUser, profile, loading, router]);
 
   const startLesson = useCallback(() => {
     if (!lesson) return;

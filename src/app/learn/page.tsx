@@ -10,14 +10,15 @@ import { CATEGORY_ICONS, CATEGORY_LABELS, CATEGORIES, Category } from '@/data/vo
 
 export default function LearnPage() {
   const router = useRouter();
-  const { profile, loading } = useAuth();
+  const { user: authUser, profile, loading } = useAuth();
   const [activeCategory, setActiveCategory] = useState<Category | 'all'>('all');
 
   useEffect(() => {
-    if (!loading && !profile) router.push('/');
-  }, [profile, loading, router]);
+    if (!loading && !authUser) router.push('/');
+    if (!loading && authUser && !profile) router.push('/onboarding');
+  }, [authUser, profile, loading, router]);
 
-  if (!profile) return null;
+  if (loading || !authUser || !profile) return null;
   const user = profile;
 
   const categories = CATEGORIES.filter((c) => lessons.some((l) => l.category === c));
