@@ -50,16 +50,60 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const supabase = createClient();
 
-  const fetchProfile = useCallback(async (userId: string) => {
-    const { data, error } = await supabase
-      .from('user_profiles')
-      .select('*')
-      .eq('id', userId)
-      .single();
-    if (data && !error) {
-      setProfile(data as UserProfile);
-    }
-  }, [supabase]);
+  /**
+   * Fetch the user_profiles row for `userId`.
+   *
+   * If it doesn't exist yet — which happens when email confirmation is
+   * enabled: the signup upsert in page.tsx runs without a session, so
+   * RLS blocks it — we auto-create the row here using the auth
+   * user_metadata stored at sign-up time.  We always have a valid session
+   * at this point (onAuthStateChange fires after the token exchange), so
+   * the INSERT will pass the `auth.uid() = id` RLS policy.
+   */
+  const fetchProfile = useCallback(
+    async (userId: string, userMeta?: Record<string, unknown>) => {
+      const { data } = await supabase
+        .from('user_profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+
+      if (data) {
+        setProfile(data as UserProfile);
+        return;
+      }
+
+      // Row missing — create it now from auth metadata
+      const meta = userMeta ?? {};
+      const today = new Date().toISOString().split('T')[0];
+      const { data: created, error } = await supabase
+        .from('user_profiles')
+        .upsert({
+          id: userId,
+          name: (meta.name as string) || 'User',
+          role: (meta.role as string) || 'student',
+          institution: (meta.institution as string) || null,
+          xp: 0,
+          level: 1,
+          streak: 0,
+          last_active_date: today,
+          coins: 100,
+          hearts: 5,
+          avatar_items: ['scrubs_white', 'badge_basic'],
+          equipped_items: ['scrubs_white', 'badge_basic'],
+          completed_lessons: [],
+          placement_level: null,
+          onboarding_completed: true,
+        })
+        .select()
+        .single();
+
+      if (created && !error) {
+        setProfile(created as UserProfile);
+      }
+    },
+    [supabase]
+  );
 
   const refreshProfile = useCallback(async () => {
     if (user) await fetchProfile(user.id);
@@ -91,7 +135,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       async (event, session) => {
         setUser(session?.user ?? null);
         if (session?.user) {
-          await fetchProfile(session.user.id);
+          // Pass user_metadata so fetchProfile can auto-create the row if needed
+          await fetchProfile(
+            session.user.id,
+            (session.user.user_metadata as Record<string, unknown>) ?? undefined
+          );
         } else {
           setProfile(null);
         }
