@@ -9,10 +9,10 @@ const NAV_ITEMS = [
   { href: '/learn', label: 'Learn', icon: '📖' },
   { href: '/flashcards', label: 'Flashcards', icon: '🃏' },
   { href: '/search', label: 'Dictionary', icon: '🔍' },
-  { href: '/character', label: 'Locker', icon: '👔' },
+  { href: '/survey', label: 'Survey', icon: '📋' },
   { href: '/leaderboard', label: 'Ranks', icon: '🏆' },
   { href: '/profile', label: 'Profile', icon: '👤' },
-  { href: '/survey', label: 'Survey', icon: '📋' },
+  { href: '/character', label: 'Locker', icon: '👔' },
 ];
 
 export default function Navbar() {
