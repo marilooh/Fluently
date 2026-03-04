@@ -45,6 +45,23 @@ const DESIRED_FEATURES = [
   'Other',
 ];
 
+const TEACHING_PROBLEMS = [
+  'Too expensive',
+  'Not practical or clinical enough',
+  'Hard to stay consistent',
+  'Not engaging or memorable',
+  'No good options exist',
+  'It has never been a priority at my institution',
+];
+
+const COMMUNICATION_BARRIERS = [
+  'Yes, regularly',
+  'Yes, occasionally',
+  'Rarely',
+  'No, never',
+  'I have not had Spanish-speaking patients yet',
+];
+
 const PRICE_RANGES = [
   '$5 or less',
   '$6 – $10',
@@ -60,12 +77,13 @@ interface FormData {
   usedPriorTool: string;
   priorToolIssues: string[];
   desiredFeatures: string[];
-  teachingFeedback: string;
-  whyImportant: string;
+  teachingProblem: string;
+  communicationBarrier: string;
   commitmentScale: number;
   wouldPay: string;
   priceRange: string;
   referralSource: string;
+  additionalComments: string;
 }
 
 const EMPTY_FORM: FormData = {
@@ -74,12 +92,13 @@ const EMPTY_FORM: FormData = {
   usedPriorTool: '',
   priorToolIssues: [],
   desiredFeatures: [],
-  teachingFeedback: '',
-  whyImportant: '',
+  teachingProblem: '',
+  communicationBarrier: '',
   commitmentScale: 0,
   wouldPay: '',
   priceRange: '',
   referralSource: '',
+  additionalComments: '',
 };
 
 // ── Sub-components ────────────────────────────────────────────────────────────
@@ -241,7 +260,7 @@ export default function SurveyPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.role || !form.frequency || !form.usedPriorTool || !form.wouldPay || !form.commitmentScale) {
+    if (!form.role || !form.frequency || !form.usedPriorTool || !form.teachingProblem || !form.communicationBarrier || !form.wouldPay || !form.commitmentScale) {
       setError('Please answer all required questions before submitting.');
       return;
     }
@@ -258,12 +277,13 @@ export default function SurveyPage() {
         used_prior_tool: form.usedPriorTool === 'Yes',
         prior_tool_issues: form.priorToolIssues,
         desired_features: form.desiredFeatures,
-        teaching_feedback: form.teachingFeedback || null,
-        why_important: form.whyImportant || null,
+        teaching_problem: form.teachingProblem,
+        communication_barrier: form.communicationBarrier,
         commitment_scale: form.commitmentScale,
         would_pay: form.wouldPay.toLowerCase(),
         price_range: form.priceRange || null,
         referral_source: form.referralSource || null,
+        additional_comments: form.additionalComments || null,
       });
 
       if (insertError) throw insertError;
@@ -373,24 +393,20 @@ export default function SurveyPage() {
           </QuestionBlock>
 
           {/* Q6 */}
-          <QuestionBlock number={6} label="What could be better about how medical Spanish is taught today?">
-            <textarea
-              value={form.teachingFeedback}
-              onChange={(e) => set('teachingFeedback', e.target.value)}
-              placeholder="Share your thoughts…"
-              rows={3}
-              className="w-full border-2 border-gray-200 focus:border-violet-400 rounded-xl px-4 py-3 text-sm text-gray-800 focus:outline-none resize-none"
+          <QuestionBlock number={6} label="What is the biggest problem with how medical Spanish is currently taught? *">
+            <RadioGroup
+              options={TEACHING_PROBLEMS}
+              selected={form.teachingProblem}
+              onChange={(v) => set('teachingProblem', v)}
             />
           </QuestionBlock>
 
           {/* Q7 */}
-          <QuestionBlock number={7} label="Why is medical Spanish important for any provider?">
-            <textarea
-              value={form.whyImportant}
-              onChange={(e) => set('whyImportant', e.target.value)}
-              placeholder="In your own words…"
-              rows={3}
-              className="w-full border-2 border-gray-200 focus:border-violet-400 rounded-xl px-4 py-3 text-sm text-gray-800 focus:outline-none resize-none"
+          <QuestionBlock number={7} label="Have you ever felt unable to properly communicate with a Spanish-speaking patient? *">
+            <RadioGroup
+              options={COMMUNICATION_BARRIERS}
+              selected={form.communicationBarrier}
+              onChange={(v) => set('communicationBarrier', v)}
             />
           </QuestionBlock>
 
@@ -442,6 +458,17 @@ export default function SurveyPage() {
               onChange={(e) => set('referralSource', e.target.value)}
               placeholder="e.g. Instagram, classmate, professor…"
               className="w-full border-2 border-gray-200 focus:border-violet-400 rounded-xl px-4 py-3 text-sm text-gray-800 focus:outline-none"
+            />
+          </QuestionBlock>
+
+          {/* Q12 */}
+          <QuestionBlock number={12} label="Any additional comments or things you wish a medical Spanish app would do?">
+            <textarea
+              value={form.additionalComments}
+              onChange={(e) => set('additionalComments', e.target.value)}
+              placeholder="Optional — share anything else on your mind…"
+              rows={3}
+              className="w-full border-2 border-gray-200 focus:border-violet-400 rounded-xl px-4 py-3 text-sm text-gray-800 focus:outline-none resize-none"
             />
           </QuestionBlock>
 

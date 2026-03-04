@@ -95,22 +95,32 @@ CREATE TRIGGER user_profiles_updated_at
 -- stores public survey submissions from /survey (no login needed).
 -- ─────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS public.survey_responses (
-  id                           UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id                      UUID        REFERENCES auth.users(id) ON DELETE SET NULL,
-  email                        TEXT,
-  role                         TEXT,
+  id                            UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id                       UUID        REFERENCES auth.users(id) ON DELETE SET NULL,
+  email                         TEXT,
+  role                          TEXT,
   spanish_interaction_frequency TEXT,
-  used_prior_tool              BOOLEAN,
-  prior_tool_issues            TEXT[]      NOT NULL DEFAULT '{}',
-  desired_features             TEXT[]      NOT NULL DEFAULT '{}',
-  teaching_feedback            TEXT,
-  why_important                TEXT,
-  commitment_scale             INTEGER     CHECK (commitment_scale BETWEEN 1 AND 5),
-  would_pay                    TEXT        CHECK (would_pay IN ('yes', 'maybe', 'no')),
-  price_range                  TEXT,
-  referral_source              TEXT,
-  created_at                   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  used_prior_tool               BOOLEAN,
+  prior_tool_issues             TEXT[]      NOT NULL DEFAULT '{}',
+  desired_features              TEXT[]      NOT NULL DEFAULT '{}',
+  teaching_problem              TEXT,       -- biggest problem with how medical Spanish is taught
+  communication_barrier         TEXT,       -- ever felt unable to communicate with a patient
+  commitment_scale              INTEGER     CHECK (commitment_scale BETWEEN 1 AND 5),
+  would_pay                     TEXT        CHECK (would_pay IN ('yes', 'maybe', 'no')),
+  price_range                   TEXT,
+  referral_source               TEXT,
+  additional_comments           TEXT,
+  created_at                    TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- If you already ran the previous schema (which had teaching_feedback / why_important),
+-- run these to migrate to the new column names and add additional_comments:
+-- ALTER TABLE public.survey_responses
+--   RENAME COLUMN teaching_feedback TO teaching_problem;
+-- ALTER TABLE public.survey_responses
+--   RENAME COLUMN why_important TO communication_barrier;
+-- ALTER TABLE public.survey_responses
+--   ADD COLUMN IF NOT EXISTS additional_comments TEXT;
 
 -- One response per user (prevents duplicate submissions).
 CREATE UNIQUE INDEX IF NOT EXISTS survey_responses_user_id_key
