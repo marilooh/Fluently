@@ -27,7 +27,7 @@ CREATE POLICY "Users can update own profile"
 
 -- ── STEP 2: Add missing columns ──────────────────────────────
 -- The app uses these columns for XP levels, streaks, hearts,
--- the avatar locker, and role-based display.
+-- the avatar locker, role-based display, and flashcard tracking.
 -- Run this block in the Supabase SQL editor to add them all.
 -- ─────────────────────────────────────────────────────────────
 ALTER TABLE public.user_profiles
@@ -41,7 +41,9 @@ ALTER TABLE public.user_profiles
   ADD COLUMN IF NOT EXISTS avatar_items       TEXT[]      NOT NULL DEFAULT ARRAY['scrubs_white','badge_basic'],
   ADD COLUMN IF NOT EXISTS equipped_items     TEXT[]      NOT NULL DEFAULT ARRAY['scrubs_white','badge_basic'],
   ADD COLUMN IF NOT EXISTS placement_level    TEXT        CHECK (placement_level IN ('beginner','intermediate','advanced')),
-  ADD COLUMN IF NOT EXISTS onboarding_completed BOOLEAN  NOT NULL DEFAULT FALSE;
+  ADD COLUMN IF NOT EXISTS onboarding_completed BOOLEAN  NOT NULL DEFAULT FALSE,
+  ADD COLUMN IF NOT EXISTS cards_studied      INTEGER     NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS cards_mastered     INTEGER     NOT NULL DEFAULT 0;
 
 
 -- ── STEP 3: Auto-update updated_at on any row change ─────────
@@ -86,6 +88,49 @@ CREATE TRIGGER user_profiles_updated_at
 --   placement_level      TEXT        CHECK (placement_level IN ('beginner','intermediate','advanced')),
 --   onboarding_completed BOOLEAN     NOT NULL DEFAULT FALSE
 -- );
+
+
+-- ── Survey responses table ───────────────────────────────────
+-- Run this in the Supabase SQL editor to create the table that
+-- stores public survey submissions from /survey (no login needed).
+-- ─────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS public.survey_responses (
+  id                           UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id                      UUID        REFERENCES auth.users(id) ON DELETE SET NULL,
+  email                        TEXT,
+  role                         TEXT,
+  spanish_interaction_frequency TEXT,
+  used_prior_tool              BOOLEAN,
+  prior_tool_issues            TEXT[]      NOT NULL DEFAULT '{}',
+  desired_features             TEXT[]      NOT NULL DEFAULT '{}',
+  teaching_feedback            TEXT,
+  why_important                TEXT,
+  commitment_scale             INTEGER     CHECK (commitment_scale BETWEEN 1 AND 5),
+  would_pay                    TEXT        CHECK (would_pay IN ('yes', 'maybe', 'no')),
+  price_range                  TEXT,
+  referral_source              TEXT,
+  created_at                   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- One response per user (prevents duplicate submissions).
+CREATE UNIQUE INDEX IF NOT EXISTS survey_responses_user_id_key
+  ON public.survey_responses(user_id)
+  WHERE user_id IS NOT NULL;
+
+-- Authenticated users can insert their own response and read it back
+-- (the read-back is needed to check if they already submitted).
+ALTER TABLE public.survey_responses ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Authenticated users can submit their own survey response"
+  ON public.survey_responses FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can view their own survey response"
+  ON public.survey_responses FOR SELECT
+  USING (auth.uid() = user_id);
+
+-- If you already ran the old "Anyone can submit a survey response" policy, drop it first:
+-- DROP POLICY IF EXISTS "Anyone can submit a survey response" ON public.survey_responses;
 
 
 -- ── Auth: Email confirmation settings ────────────────────────

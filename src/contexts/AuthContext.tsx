@@ -26,6 +26,8 @@ export interface UserProfile {
   equipped_items?: string[];
   placement_level?: 'beginner' | 'intermediate' | 'advanced' | null;
   onboarding_completed?: boolean;
+  cards_studied?: number;
+  cards_mastered?: number;
 }
 
 interface AuthContextType {
@@ -114,20 +116,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (user) await fetchProfile(user.id);
   }, [user, fetchProfile]);
 
-  const updateProfile = useCallback(async (updates: Partial<UserProfile>): Promise<UserProfile | null> => {
-    if (!user) return null;
-    const { data, error } = await supabase
-      .from('user_profiles')
-      .update({ ...updates, updated_at: new Date().toISOString() })
-      .eq('id', user.id)
-      .select()
-      .single();
-    if (data && !error) {
-      setProfile(data as UserProfile);
-      return data as UserProfile;
-    }
-    return null;
-  }, [user, supabase]);
+  const updateProfile = useCallback(
+    async (updates: Partial<UserProfile>): Promise<UserProfile | null> => {
+      if (!user || !profile) return null;
+
+      // Filter to only columns that actually exist in the Supabase table.
+      // The profile object is built from select('*'), so only real DB columns
+      // are own properties at runtime. Passing unknown column names causes
+      // Postgres to reject the entire UPDATE — losing writes we DO want.
+      const safeUpdates = Object.fromEntries(
+        Object.entries(updates).filter(([key]) =>
+          Object.prototype.hasOwnProperty.call(profile, key)
+        )
+      ) as Partial<UserProfile>;
+
+      const { data, error } = await supabase
+        .from('user_profiles')
+        .update({ ...safeUpdates, updated_at: new Date().toISOString() })
+        .eq('id', user.id)
+        .select()
+        .single();
+      if (data && !error) {
+        setProfile(data as UserProfile);
+        return data as UserProfile;
+      }
+      return null;
+    },
+    [user, profile, supabase]
+  );
 
   const signOut = useCallback(async () => {
     await supabase.auth.signOut();
