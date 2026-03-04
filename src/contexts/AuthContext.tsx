@@ -26,6 +26,8 @@ export interface UserProfile {
   equipped_items?: string[];
   placement_level?: 'beginner' | 'intermediate' | 'advanced' | null;
   onboarding_completed?: boolean;
+  cards_studied?: number;
+  cards_mastered?: number;
 }
 
 interface AuthContextType {

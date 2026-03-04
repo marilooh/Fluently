@@ -1,7 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import Navbar from '@/components/Navbar';
+import { useAuth } from '@/contexts/AuthContext';
 import { createClient } from '@/lib/supabase';
+
+// ── Survey option constants ───────────────────────────────────────────────────
 
 const ROLES = [
   'Medical student',
@@ -47,6 +52,8 @@ const PRICE_RANGES = [
   'More than $20',
 ];
 
+// ── Types ────────────────────────────────────────────────────────────────────
+
 interface FormData {
   role: string;
   frequency: string;
@@ -74,6 +81,8 @@ const EMPTY_FORM: FormData = {
   priceRange: '',
   referralSource: '',
 };
+
+// ── Sub-components ────────────────────────────────────────────────────────────
 
 function CheckboxGroup({
   options,
@@ -159,11 +168,73 @@ function QuestionBlock({ number, label, children }: { number: number; label: str
   );
 }
 
+// ── Shared thank-you screen ───────────────────────────────────────────────────
+
+function ThankYouScreen() {
+  const router = useRouter();
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-violet-50 via-white to-orange-50">
+      <Navbar />
+      <div className="flex items-center justify-center px-4 pt-24 pb-24">
+        <div className="bg-white rounded-3xl shadow-sm border border-violet-100 p-10 max-w-md w-full text-center">
+          <div className="text-6xl mb-4">🌟</div>
+          <h1 className="text-2xl font-bold text-violet-800 mb-1">¡Muchas gracias!</h1>
+          <p className="text-orange-500 font-semibold mb-4">Thank you so much!</p>
+          <p className="text-gray-600 text-sm leading-relaxed mb-2">
+            Tu opinión es invaluable y nos ayudará a construir una herramienta que realmente sirva
+            a los profesionales de la salud.
+          </p>
+          <p className="text-gray-500 text-sm leading-relaxed">
+            Your feedback is invaluable and will help us build a tool that truly serves healthcare
+            professionals.
+          </p>
+          <div className="mt-8 pt-6 border-t border-gray-100">
+            <button
+              onClick={() => router.push('/dashboard')}
+              className="text-violet-600 font-semibold text-sm hover:underline"
+            >
+              ← Back to Dashboard
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Main page ─────────────────────────────────────────────────────────────────
+
 export default function SurveyPage() {
+  const router = useRouter();
+  const { user, profile, loading } = useAuth();
+
+  const [checkingSubmission, setCheckingSubmission] = useState(true);
+  const [alreadySubmitted, setAlreadySubmitted] = useState(false);
+
   const [form, setForm] = useState<FormData>(EMPTY_FORM);
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+
+  // Redirect unauthenticated users to the login page
+  useEffect(() => {
+    if (!loading && !user) router.push('/');
+  }, [loading, user, router]);
+
+  // Check whether this user already submitted a response
+  useEffect(() => {
+    if (!user) return;
+    const supabase = createClient();
+    supabase
+      .from('survey_responses')
+      .select('id')
+      .eq('user_id', user.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        setAlreadySubmitted(!!data);
+        setCheckingSubmission(false);
+      });
+  }, [user]);
 
   const set = <K extends keyof FormData>(key: K, val: FormData[K]) =>
     setForm((f) => ({ ...f, [key]: val }));
@@ -180,6 +251,8 @@ export default function SurveyPage() {
     try {
       const supabase = createClient();
       const { error: insertError } = await supabase.from('survey_responses').insert({
+        user_id: user!.id,
+        email: user!.email ?? null,
         role: form.role,
         spanish_interaction_frequency: form.frequency,
         used_prior_tool: form.usedPriorTool === 'Yes',
@@ -202,30 +275,53 @@ export default function SurveyPage() {
     }
   };
 
-  if (submitted) {
+  // ── Loading / redirect states ───────────────────────────────────────────────
+  if (loading || !user || !profile || checkingSubmission) return null;
+
+  // ── Already submitted ───────────────────────────────────────────────────────
+  if (alreadySubmitted || submitted) return <ThankYouScreen />;
+
+  // ── Not yet qualified ────────────────────────────────────────────────────────
+  const hasQualified =
+    profile.completed_lessons.length > 0 || (profile.cards_studied ?? 0) > 0;
+
+  if (!hasQualified) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-violet-50 via-white to-orange-50 flex items-center justify-center px-4">
-        <div className="bg-white rounded-3xl shadow-sm border border-violet-100 p-10 max-w-md w-full text-center">
-          <div className="text-6xl mb-4">🌟</div>
-          <h1 className="text-2xl font-bold text-violet-800 mb-1">¡Muchas gracias!</h1>
-          <p className="text-orange-500 font-semibold mb-4">Thank you so much!</p>
-          <p className="text-gray-600 text-sm leading-relaxed mb-2">
-            Tu opinión es invaluable y nos ayudará a construir una herramienta que realmente sirva a los profesionales de la salud.
-          </p>
-          <p className="text-gray-500 text-sm leading-relaxed">
-            Your feedback is invaluable and will help us build a tool that truly serves healthcare professionals.
-          </p>
-          <div className="mt-8 pt-6 border-t border-gray-100">
-            <p className="text-xs text-gray-400">— The SanaSana / Fluently Team</p>
+      <div className="min-h-screen bg-gradient-to-br from-violet-50 via-white to-orange-50">
+        <Navbar />
+        <div className="flex items-center justify-center px-4 pt-24 pb-24">
+          <div className="bg-white rounded-3xl shadow-sm border border-violet-100 p-10 max-w-md w-full text-center">
+            <div className="text-5xl mb-4">📚</div>
+            <h1 className="text-xl font-bold text-gray-900 mb-2">Try the app first!</h1>
+            <p className="text-gray-500 text-sm leading-relaxed mb-6">
+              Complete at least one lesson or one flashcard session before filling out the survey.
+              We want your feedback to be based on real experience with the app.
+            </p>
+            <div className="flex flex-col gap-3">
+              <button
+                onClick={() => router.push('/learn')}
+                className="w-full bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 text-white font-bold rounded-2xl py-3 transition-all"
+              >
+                Go to Lessons
+              </button>
+              <button
+                onClick={() => router.push('/flashcards')}
+                className="w-full bg-orange-50 hover:bg-orange-100 text-orange-700 font-semibold rounded-2xl py-3 transition-all border border-orange-200"
+              >
+                Go to Flashcards
+              </button>
+            </div>
           </div>
         </div>
       </div>
     );
   }
 
+  // ── Survey form ──────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-gradient-to-br from-violet-50 via-white to-orange-50">
-      <div className="max-w-2xl mx-auto px-4 py-12">
+      <Navbar />
+      <div className="max-w-2xl mx-auto px-4 pt-24 pb-12">
 
         {/* Header */}
         <div className="text-center mb-10">
@@ -235,7 +331,7 @@ export default function SurveyPage() {
           </div>
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Medical Spanish Survey</h1>
           <p className="text-gray-500 text-sm leading-relaxed max-w-lg mx-auto">
-            Help us build a better tool for healthcare providers. This takes about 3 minutes and your answers are completely anonymous.
+            Help us build a better tool for healthcare providers. This takes about 3 minutes.
           </p>
         </div>
 
@@ -256,7 +352,7 @@ export default function SurveyPage() {
             <RadioGroup options={['Yes', 'No']} selected={form.usedPriorTool} onChange={(v) => set('usedPriorTool', v)} />
           </QuestionBlock>
 
-          {/* Q4 — conditional */}
+          {/* Q4 — conditional on Q3 = Yes */}
           {form.usedPriorTool === 'Yes' && (
             <QuestionBlock number={4} label="What didn't work about it? (Select all that apply)">
               <CheckboxGroup
@@ -331,7 +427,7 @@ export default function SurveyPage() {
             />
           </QuestionBlock>
 
-          {/* Q10 — conditional */}
+          {/* Q10 — conditional on Q9 = Yes or Maybe */}
           {(form.wouldPay === 'Yes' || form.wouldPay === 'Maybe') && (
             <QuestionBlock number={10} label="How much per month would feel reasonable?">
               <RadioGroup options={PRICE_RANGES} selected={form.priceRange} onChange={(v) => set('priceRange', v)} cols={2} />
@@ -364,7 +460,7 @@ export default function SurveyPage() {
           </button>
 
           <p className="text-center text-xs text-gray-400 mt-4">
-            Your responses are anonymous and will only be used to improve our product.
+            Your response is saved under your account so you can only submit once.
           </p>
         </form>
       </div>

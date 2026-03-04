@@ -12,6 +12,7 @@ const NAV_ITEMS = [
   { href: '/character', label: 'Locker', icon: '👔' },
   { href: '/leaderboard', label: 'Ranks', icon: '🏆' },
   { href: '/profile', label: 'Profile', icon: '👤' },
+  { href: '/survey', label: 'Survey', icon: '📋' },
 ];
 
 export default function Navbar() {

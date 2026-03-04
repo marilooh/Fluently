@@ -20,6 +20,8 @@ export default function FlashcardsPage() {
   const [rated, setRated] = useState(false);
   const [sessionStats, setSessionStats] = useState({ again: 0, hard: 0, good: 0, easy: 0 });
   const [sessionComplete, setSessionComplete] = useState(false);
+  const [flashEarnedXp, setFlashEarnedXp] = useState(0);
+  const [flashNewTotalXp, setFlashNewTotalXp] = useState(0);
 
   useEffect(() => {
     if (!loading && !authUser) router.push('/');
@@ -48,17 +50,25 @@ export default function FlashcardsPage() {
   const rate = (rating: Rating, label: keyof typeof sessionStats) => {
     const card = deck[cardIndex];
     rateCard(card.id, rating);
-    setSessionStats((s) => ({ ...s, [label]: s[label] + 1 }));
+    // Compute final stats synchronously so the setTimeout closure has the correct values
+    const finalStats = { ...sessionStats, [label]: sessionStats[label] + 1 };
+    setSessionStats(finalStats);
     setRated(true);
     setTimeout(async () => {
       if (cardIndex + 1 >= deck.length) {
-        // Session done — award XP + coins
+        // Session done — award XP + coins and record cards studied / mastered
         if (profile) {
-          const newXp = profile.xp + 10;
+          const XP_PER_SESSION = 10;
+          const newXp = profile.xp + XP_PER_SESSION;
+          const mastered = finalStats.good + finalStats.easy;
+          setFlashEarnedXp(XP_PER_SESSION);
+          setFlashNewTotalXp(newXp);
           await updateProfile({
             xp: newXp,
             level: Math.floor(newXp / 100) + 1,
             coins: profile.coins + 5,
+            cards_studied: (profile.cards_studied ?? 0) + deck.length,
+            cards_mastered: (profile.cards_mastered ?? 0) + mastered,
           });
         }
         setSessionComplete(true);
@@ -155,24 +165,30 @@ export default function FlashcardsPage() {
     const total = sessionStats.again + sessionStats.hard + sessionStats.good + sessionStats.easy;
     const known = sessionStats.good + sessionStats.easy;
     const pct = total > 0 ? Math.round((known / total) * 100) : 0;
-    const congrats =
-      pct >= 80 ? { es: '¡Muy bien hecho!', en: 'Outstanding session — your memory is sharp!' } :
-      pct >= 60 ? { es: '¡Buen repaso!', en: 'Solid review — the spaced repetition is working!' } :
-                  { es: '¡Sigue así!', en: 'Keep going — every session builds stronger recall.' };
+    const subMessage =
+      pct >= 80 ? 'Outstanding session — your memory is sharp!' :
+      pct >= 60 ? 'Solid review — the spaced repetition is working!' :
+                  'Keep going — every session builds stronger recall.';
     return (
       <div className="min-h-screen bg-sky-50">
         <Navbar />
         <div className="pt-4 md:pt-24 pb-24 px-4 max-w-md mx-auto">
           <div className="bg-white rounded-3xl p-8 text-center shadow-sm border border-sky-100 slide-up">
-            <div className="text-6xl mb-4">🃏</div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-1">{congrats.es}</h1>
-            <p className="text-gray-500 text-sm mb-6">{congrats.en}</p>
+            <div className="text-6xl mb-4">🎉</div>
+            <h1 className="text-3xl font-bold text-gray-900 mb-1">¡Excelente!</h1>
+            <p className="text-gray-500 text-sm mb-6">{subMessage}</p>
 
-            <div className="grid grid-cols-3 gap-3 mb-6">
+            <div className="grid grid-cols-2 gap-3 mb-3">
               <div className="bg-sky-50 rounded-2xl p-4 text-center">
-                <div className="text-2xl font-bold text-sky-600">+10</div>
+                <div className="text-2xl font-bold text-sky-600">+{flashEarnedXp}</div>
                 <div className="text-xs text-gray-500 mt-1">XP Earned</div>
               </div>
+              <div className="bg-violet-50 rounded-2xl p-4 text-center">
+                <div className="text-2xl font-bold text-violet-600">{flashNewTotalXp}</div>
+                <div className="text-xs text-gray-500 mt-1">Total XP</div>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3 mb-6">
               <div className="bg-amber-50 rounded-2xl p-4 text-center">
                 <div className="text-2xl font-bold text-amber-500">+5</div>
                 <div className="text-xs text-gray-500 mt-1">Coins</div>
