@@ -14,15 +14,15 @@ const ROLE_LABELS: Record<string, string> = {
 };
 
 const BADGES = [
-  { id: 'first_lesson', emoji: '🎓', label: 'First Lesson', desc: 'Complete your first lesson', check: (u: UserProfile) => u.completed_lessons.length >= 1 },
-  { id: 'streak_3', emoji: '🔥', label: '3-Day Streak', desc: '3 days in a row', check: (u: UserProfile) => u.streak >= 3 },
-  { id: 'streak_7', emoji: '⚡', label: 'Week Warrior', desc: '7-day streak', check: (u: UserProfile) => u.streak >= 7 },
-  { id: 'xp_100', emoji: '💯', label: '100 XP Club', desc: 'Earn 100 XP', check: (u: UserProfile) => u.xp >= 100 },
-  { id: 'xp_500', emoji: '🌟', label: 'Star Learner', desc: 'Earn 500 XP', check: (u: UserProfile) => u.xp >= 500 },
-  { id: 'lessons_5', emoji: '📚', label: 'Bookworm', desc: 'Complete 5 lessons', check: (u: UserProfile) => u.completed_lessons.length >= 5 },
-  { id: 'lessons_10', emoji: '🏆', label: 'Committed', desc: 'Complete 10 lessons', check: (u: UserProfile) => u.completed_lessons.length >= 10 },
-  { id: 'level_5', emoji: '🚀', label: 'Level 5', desc: 'Reach level 5', check: (u: UserProfile) => u.level >= 5 },
-  { id: 'coins_200', emoji: '🪙', label: 'Coin Collector', desc: 'Accumulate 200 coins', check: (u: UserProfile) => u.coins >= 200 },
+  { id: 'first_lesson', emoji: '🎓', label: 'First Lesson', desc: 'Complete your first lesson', check: (u: UserProfile) => (u.completed_lessons ?? []).length >= 1 },
+  { id: 'streak_3', emoji: '🔥', label: '3-Day Streak', desc: '3 days in a row', check: (u: UserProfile) => (u.streak ?? 0) >= 3 },
+  { id: 'streak_7', emoji: '⚡', label: 'Week Warrior', desc: '7-day streak', check: (u: UserProfile) => (u.streak ?? 0) >= 7 },
+  { id: 'xp_100', emoji: '💯', label: '100 XP Club', desc: 'Earn 100 XP', check: (u: UserProfile) => (u.xp ?? 0) >= 100 },
+  { id: 'xp_500', emoji: '🌟', label: 'Star Learner', desc: 'Earn 500 XP', check: (u: UserProfile) => (u.xp ?? 0) >= 500 },
+  { id: 'lessons_5', emoji: '📚', label: 'Bookworm', desc: 'Complete 5 lessons', check: (u: UserProfile) => (u.completed_lessons ?? []).length >= 5 },
+  { id: 'lessons_10', emoji: '🏆', label: 'Committed', desc: 'Complete 10 lessons', check: (u: UserProfile) => (u.completed_lessons ?? []).length >= 10 },
+  { id: 'level_5', emoji: '🚀', label: 'Level 5', desc: 'Reach level 5', check: (u: UserProfile) => (u.level ?? 0) >= 5 },
+  { id: 'coins_200', emoji: '🪙', label: 'Coin Collector', desc: 'Accumulate 200 coins', check: (u: UserProfile) => (u.coins ?? 0) >= 200 },
 ];
 
 export default function ProfilePage() {
@@ -31,8 +31,7 @@ export default function ProfilePage() {
 
   useEffect(() => {
     if (!loading && !authUser) router.push('/');
-    if (!loading && authUser && !profile) router.push('/onboarding');
-  }, [authUser, profile, loading, router]);
+  }, [authUser, loading, router]);
 
   const handleLogout = async () => {
     await signOut();
@@ -42,14 +41,15 @@ export default function ProfilePage() {
 
   if (loading || !authUser || !profile) return null;
   const user = profile;
+  const level = user.level ?? 1;
 
   const cardStates = getAllCardStates();
   const reviewedCards = Object.keys(cardStates).length;
   const masteredCards = Object.values(cardStates).filter((s) => s.interval > 7).length;
-  const completedLessons = user.completed_lessons.length;
+  const completedLessons = (user.completed_lessons ?? []).length;
   const totalLessons = lessons.length;
-  const xpForNextLevel = user.level * 100;
-  const xpInCurrentLevel = user.xp - (user.level - 1) * 100;
+  const xpForNextLevel = level * 100;
+  const xpInCurrentLevel = (user.xp ?? 0) - (level - 1) * 100;
   const xpProgress = Math.min((xpInCurrentLevel / xpForNextLevel) * 100, 100);
 
   const earnedBadges = BADGES.filter((b) => b.check(user));
@@ -69,21 +69,21 @@ export default function ProfilePage() {
               😊
             </div>
             <div className="flex-1">
-              <h1 className="text-xl font-bold">{user.name}</h1>
-              <p className="text-sky-100 text-sm">{ROLE_LABELS[user.role] || user.role}</p>
+              <h1 className="text-xl font-bold">{user.display_name}</h1>
+              <p className="text-sky-100 text-sm">{ROLE_LABELS[user.role ?? 'other'] || 'Healthcare Professional'}</p>
               {user.institution && <p className="text-sky-100 text-xs">{user.institution}</p>}
               <p className="text-sky-200 text-xs mt-1">Member since {joinDate}</p>
             </div>
             <div className="text-right">
-              <div className="text-2xl font-bold">Lv.{user.level}</div>
-              <div className="text-sky-100 text-xs">{user.xp} XP total</div>
+              <div className="text-2xl font-bold">Lv.{level}</div>
+              <div className="text-sky-100 text-xs">{user.xp ?? 0} XP total</div>
             </div>
           </div>
 
           {/* XP bar */}
           <div className="mt-4">
             <div className="flex justify-between text-xs text-sky-100 mb-1">
-              <span>Level {user.level}</span>
+              <span>Level {level}</span>
               <span>{xpInCurrentLevel} / {xpForNextLevel} XP</span>
             </div>
             <div className="bg-white/20 rounded-full h-2.5 overflow-hidden">
@@ -95,7 +95,7 @@ export default function ProfilePage() {
         {/* Stats grid */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
           {[
-            { icon: '🔥', value: user.streak, label: 'Day Streak' },
+            { icon: '🔥', value: user.streak ?? 0, label: 'Day Streak' },
             { icon: '📖', value: `${completedLessons}/${totalLessons}`, label: 'Lessons Done' },
             { icon: '🃏', value: reviewedCards, label: 'Cards Studied' },
             { icon: '🧠', value: masteredCards, label: 'Cards Mastered' },
@@ -135,11 +135,11 @@ export default function ProfilePage() {
         </div>
 
         {/* Lesson history */}
-        {user.completed_lessons.length > 0 && (
+        {(user.completed_lessons ?? []).length > 0 && (
           <div className="bg-white rounded-2xl p-5 shadow-sm border border-sky-100 mb-6">
             <h2 className="font-bold text-gray-900 mb-4">Completed Lessons</h2>
             <div className="space-y-2">
-              {user.completed_lessons.map((lessonId) => {
+              {(user.completed_lessons ?? []).map((lessonId) => {
                 const lesson = lessons.find((l) => l.id === lessonId);
                 if (!lesson) return null;
                 return (

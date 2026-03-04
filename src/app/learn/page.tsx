@@ -15,7 +15,6 @@ export default function LearnPage() {
 
   useEffect(() => {
     if (!loading && !authUser) router.push('/');
-    if (!loading && authUser && !profile) router.push('/onboarding');
   }, [authUser, profile, loading, router]);
 
   if (loading || !authUser || !profile) return null;

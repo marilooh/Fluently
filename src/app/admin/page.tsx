@@ -38,10 +38,10 @@ export default function AdminPage() {
   const exportCSV = () => {
     const headers = ['Name', 'Email', 'Role', 'Institution', 'Joined', 'XP', 'Level', 'Streak', 'Completed Lessons', 'Cards Studied'];
     const rows = users.map((u) => [
-      u.name, u.email ?? '', ROLE_LABELS[u.role] || u.role, u.institution || '',
+      u.display_name, u.email ?? '', ROLE_LABELS[u.role ?? 'other'] || u.role, u.institution || '',
       new Date(u.created_at).toLocaleDateString(),
-      u.xp, u.level, u.streak,
-      u.completed_lessons.length,
+      u.xp, u.level ?? 1, u.streak ?? 0,
+      (u.completed_lessons ?? []).length,
       0,
     ]);
     const csv = [headers, ...rows].map((r) => r.map(String).join(',')).join('\n');
@@ -75,17 +75,18 @@ export default function AdminPage() {
   }
 
   const roleBreakdown = users.reduce<Record<string, number>>((acc, u) => {
-    acc[u.role] = (acc[u.role] || 0) + 1; return acc;
+    const role = u.role ?? 'other';
+    acc[role] = (acc[role] || 0) + 1; return acc;
   }, {});
 
-  const avgXP = users.length ? Math.round(users.reduce((s, u) => s + u.xp, 0) / users.length) : 0;
-  const avgStreak = users.length ? (users.reduce((s, u) => s + u.streak, 0) / users.length).toFixed(1) : '0';
+  const avgXP = users.length ? Math.round(users.reduce((s, u) => s + (u.xp ?? 0), 0) / users.length) : 0;
+  const avgStreak = users.length ? (users.reduce((s, u) => s + (u.streak ?? 0), 0) / users.length).toFixed(1) : '0';
   const totalSessions = 0; // Practice sessions now tracked in Supabase
 
   const lessonCompletionRates = lessons.map((l) => ({
     title: l.title,
-    completions: users.filter((u) => u.completed_lessons.includes(l.id)).length,
-    rate: users.length ? Math.round((users.filter((u) => u.completed_lessons.includes(l.id)).length / users.length) * 100) : 0,
+    completions: users.filter((u) => (u.completed_lessons ?? []).includes(l.id)).length,
+    rate: users.length ? Math.round((users.filter((u) => (u.completed_lessons ?? []).includes(l.id)).length / users.length) * 100) : 0,
   })).sort((a, b) => b.completions - a.completions);
 
   return (
@@ -188,13 +189,13 @@ export default function AdminPage() {
                 <tbody className="divide-y divide-gray-50">
                   {users.map((u) => (
                     <tr key={u.id} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 font-medium text-gray-900">{u.name}</td>
-                      <td className="px-4 py-3 text-gray-500">{ROLE_LABELS[u.role] || u.role}</td>
+                      <td className="px-4 py-3 font-medium text-gray-900">{u.display_name}</td>
+                      <td className="px-4 py-3 text-gray-500">{ROLE_LABELS[u.role ?? 'other'] || u.role}</td>
                       <td className="px-4 py-3 text-gray-500">{u.institution || '—'}</td>
-                      <td className="px-4 py-3 font-semibold text-sky-600">{u.xp}</td>
-                      <td className="px-4 py-3 text-gray-700">{u.level}</td>
-                      <td className="px-4 py-3 text-orange-500 font-medium">🔥 {u.streak}</td>
-                      <td className="px-4 py-3 text-gray-700">{u.completed_lessons.length}</td>
+                      <td className="px-4 py-3 font-semibold text-sky-600">{u.xp ?? 0}</td>
+                      <td className="px-4 py-3 text-gray-700">{u.level ?? 1}</td>
+                      <td className="px-4 py-3 text-orange-500 font-medium">🔥 {u.streak ?? 0}</td>
+                      <td className="px-4 py-3 text-gray-700">{(u.completed_lessons ?? []).length}</td>
                       <td className="px-4 py-3 text-gray-400 text-xs">{new Date(u.created_at).toLocaleDateString()}</td>
                     </tr>
                   ))}

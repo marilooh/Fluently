@@ -66,35 +66,36 @@ export default function CharacterPage() {
 
   useEffect(() => {
     if (!loading && !authUser) router.push('/');
-    if (!loading && authUser && !profile) router.push('/onboarding');
-  }, [authUser, profile, loading, router]);
+  }, [authUser, loading, router]);
 
   const handlePurchase = async (item: ShopItem) => {
     if (!profile) return;
-    const owned = profile.avatar_items.includes(item.id);
+    const ownedItems = profile.avatar_items ?? [];
+    const equippedItems = profile.equipped_items ?? [];
+    const owned = ownedItems.includes(item.id);
     if (owned) {
       // Already owned — just equip
       const slot = item.slot;
-      const filtered = profile.equipped_items.filter((i) => {
+      const filtered = equippedItems.filter((i) => {
         const s = shopItems.find((si) => si.id === i);
         return s ? s.slot !== slot : true;
       });
       await updateProfile({ equipped_items: [...filtered, item.id] });
       setMessage(`${item.emoji} ${item.name} equipped!`);
-    } else if (profile.coins >= item.price) {
+    } else if ((profile.coins ?? 0) >= item.price) {
       const slot = item.slot;
-      const filtered = profile.equipped_items.filter((i) => {
+      const filtered = equippedItems.filter((i) => {
         const s = shopItems.find((si) => si.id === i);
         return s ? s.slot !== slot : true;
       });
       await updateProfile({
-        coins: profile.coins - item.price,
-        avatar_items: [...profile.avatar_items, item.id],
+        coins: (profile.coins ?? 0) - item.price,
+        avatar_items: [...ownedItems, item.id],
         equipped_items: [...filtered, item.id],
       });
       setMessage(`🎉 Purchased & equipped ${item.name}!`);
     } else {
-      setMessage(`❌ Not enough coins! You need ${item.price - profile.coins} more coins.`);
+      setMessage(`❌ Not enough coins! You need ${item.price - (profile.coins ?? 0)} more coins.`);
     }
     setTimeout(() => setMessage(''), 3000);
   };
@@ -124,12 +125,12 @@ export default function CharacterPage() {
           <div className="md:col-span-1">
             <div className="bg-white rounded-3xl p-6 shadow-sm border border-sky-100 text-center sticky top-24">
               <p className="text-sm font-medium text-gray-500 mb-4">Your Avatar</p>
-              <Avatar equippedItems={user.equipped_items} items={shopItems} />
-              <p className="font-bold text-gray-900 mt-4 text-sm">{user.name}</p>
-              <p className="text-gray-400 text-xs capitalize">{user.role}</p>
+              <Avatar equippedItems={user.equipped_items ?? []} items={shopItems} />
+              <p className="font-bold text-gray-900 mt-4 text-sm">{user.display_name}</p>
+              <p className="text-gray-400 text-xs capitalize">{user.role ?? 'healthcare'}</p>
               <div className="flex items-center justify-center gap-1 mt-3 bg-yellow-50 rounded-xl py-2 px-4">
                 <span>🪙</span>
-                <span className="font-bold text-yellow-600">{user.coins} coins</span>
+                <span className="font-bold text-yellow-600">{user.coins ?? 0} coins</span>
               </div>
               <p className="text-xs text-gray-400 mt-2">Earn coins by completing lessons</p>
             </div>
@@ -150,8 +151,8 @@ export default function CharacterPage() {
 
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               {slotItems.map((item) => {
-                const owned = user.avatar_items.includes(item.id);
-                const equipped = user.equipped_items.includes(item.id);
+                const owned = (user.avatar_items ?? []).includes(item.id);
+                const equipped = (user.equipped_items ?? []).includes(item.id);
                 return (
                   <button key={item.id} onClick={() => handlePurchase(item)}
                     className={`text-left border-2 rounded-2xl p-4 transition-all card-hover ${RARITY_COLORS[item.rarity]}
@@ -174,7 +175,7 @@ export default function CharacterPage() {
                       ) : (
                         <div className="flex items-center gap-1">
                           <span className="text-xs">🪙</span>
-                          <span className={`text-xs font-bold ${user.coins >= item.price ? 'text-amber-600' : 'text-red-400'}`}>
+                          <span className={`text-xs font-bold ${(user.coins ?? 0) >= item.price ? 'text-amber-600' : 'text-red-400'}`}>
                             {item.price}
                           </span>
                         </div>

@@ -14,17 +14,22 @@ export type Rating = 0 | 1 | 2 | 3 | 4 | 5;
 // 0 = complete blackout, 1 = wrong but familiar, 2 = wrong with easy hint,
 // 3 = correct with difficulty, 4 = correct, 5 = perfect
 
-const STORAGE_KEY = 'fluently_srs';
+let storageKey = 'fluently_srs';
+
+/** Call once after auth loads to namespace progress per user. */
+export function initForUser(userId: string): void {
+  storageKey = `fluently_srs_${userId}`;
+}
 
 function loadStates(): Record<string, CardState> {
   if (typeof window === 'undefined') return {};
-  const raw = localStorage.getItem(STORAGE_KEY);
+  const raw = localStorage.getItem(storageKey);
   return raw ? JSON.parse(raw) : {};
 }
 
 function saveStates(states: Record<string, CardState>): void {
   if (typeof window === 'undefined') return;
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(states));
+  localStorage.setItem(storageKey, JSON.stringify(states));
 }
 
 export function getCardState(cardId: string): CardState {

@@ -68,13 +68,13 @@ export default function LessonPage() {
   const [score, setScore] = useState(0);
   const [startTime] = useState(Date.now());
   const [shake, setShake] = useState(false);
+  const [saveError, setSaveError] = useState(false);
 
   const lesson = getLessonById(lessonId);
 
   useEffect(() => {
     if (!loading && !authUser) { router.push('/'); return; }
-    if (!loading && authUser && !profile) { router.push('/onboarding'); return; }
-    if (profile) setHearts(profile.hearts);
+    if (profile) setHearts(profile.hearts ?? 5);
   }, [authUser, profile, loading, router]);
 
   const startLesson = useCallback(() => {
@@ -121,13 +121,14 @@ export default function LessonPage() {
     const newXp = profile.xp + xpEarned;
     const newLevel = Math.floor(newXp / 100) + 1;
     const today = new Date().toISOString().split('T')[0];
+    const currentStreak = profile.streak ?? 0;
     const wasYesterday = profile.last_active_date &&
       new Date(today).getTime() - new Date(profile.last_active_date).getTime() === 86400000;
-    const newStreak = wasYesterday ? profile.streak + 1 :
-      profile.last_active_date === today ? profile.streak : 1;
+    const newStreak = wasYesterday ? currentStreak + 1 :
+      profile.last_active_date === today ? currentStreak : 1;
     const completedLessons = [...new Set([...(profile.completed_lessons || []), lesson.id])];
 
-    await updateProfile({
+    const saved = await updateProfile({
       xp: newXp,
       level: newLevel,
       streak: newStreak,
@@ -136,6 +137,7 @@ export default function LessonPage() {
       hearts: Math.min(5, hearts + 1),
       completed_lessons: completedLessons,
     });
+    if (!saved) setSaveError(true);
     setPhase('complete');
   };
 
@@ -210,6 +212,12 @@ export default function LessonPage() {
               {accuracy >= 80 ? '¡Excelente!' : accuracy >= 50 ? '¡Bien hecho!' : 'Keep Practicing!'}
             </h1>
             <p className="text-gray-500 text-sm mb-6">Lesson complete</p>
+
+            {saveError && (
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-4 text-sm text-amber-700">
+                ⚠️ Progress could not be saved. Check your connection — your XP and completion may not have updated.
+              </div>
+            )}
 
             <div className="grid grid-cols-3 gap-3 mb-6">
               <div className="bg-sky-50 rounded-xl p-4 text-center">

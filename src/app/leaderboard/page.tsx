@@ -28,14 +28,13 @@ export default function LeaderboardPage() {
 
   useEffect(() => {
     if (!loading && !authUser) { router.push('/'); return; }
-    if (!loading && authUser && !profile) { router.push('/onboarding'); return; }
     if (profile) {
       const combined = [
         ...MOCK_USERS,
-        { name: profile.name, xp: profile.xp, level: profile.level, streak: profile.streak, role: profile.role, institution: profile.institution },
+        { name: profile.display_name, xp: profile.xp ?? 0, level: profile.level ?? 1, streak: profile.streak ?? 0, role: profile.role ?? 'other', institution: profile.institution },
       ].sort((a, b) => b.xp - a.xp);
       setBoard(combined.slice(0, 20));
-      const rank = combined.findIndex((p) => p.name === profile.name);
+      const rank = combined.findIndex((p) => p.name === profile.display_name);
       setUserRank(rank >= 0 ? rank + 1 : null);
     }
   }, [authUser, profile, loading, router]);
@@ -97,18 +96,18 @@ export default function LeaderboardPage() {
             <div className="flex items-center gap-3">
               <span className="text-sky-600 font-bold text-lg">#{userRank}</span>
               <div>
-                <p className="font-bold text-sky-800 text-sm">{user.name} (You)</p>
-                <p className="text-sky-600 text-xs">{user.xp} XP · Level {user.level}</p>
+                <p className="font-bold text-sky-800 text-sm">{user.display_name} (You)</p>
+                <p className="text-sky-600 text-xs">{user.xp ?? 0} XP · Level {user.level ?? 1}</p>
               </div>
             </div>
-            <span className="text-xl">{ROLE_EMOJI[user.role]}</span>
+            <span className="text-xl">{ROLE_EMOJI[user.role ?? 'other']}</span>
           </div>
         )}
 
         {/* Full list */}
         <div className="bg-white rounded-2xl shadow-sm border border-sky-100 divide-y divide-gray-50">
           {board.map((p, i) => {
-            const isCurrentUser = p.name === user.name;
+            const isCurrentUser = p.name === user.display_name;
             return (
               <div key={`${p.name}-${i}`}
                 className={`flex items-center gap-4 px-4 py-3 ${isCurrentUser ? 'bg-sky-50' : ''}`}>

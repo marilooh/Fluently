@@ -6,39 +6,22 @@ export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get('code');
   const type = searchParams.get('type');
-  const next = searchParams.get('next') ?? '/dashboard';
 
   if (code) {
     const supabase = await createClient();
     const { error } = await supabase.auth.exchangeCodeForSession(code);
 
     if (!error) {
-      // Password recovery — redirect to update-password page
+      // Password recovery — go to the update-password page
       if (type === 'recovery') {
         return NextResponse.redirect(`${origin}/auth/update-password`);
       }
 
-      // New signup — check if user has completed onboarding
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      if (user) {
-        const { data: profile } = await supabase
-          .from('user_profiles')
-          .select('onboarding_completed')
-          .eq('id', user.id)
-          .single();
-
-        if (!profile || !profile.onboarding_completed) {
-          return NextResponse.redirect(`${origin}/onboarding`);
-        }
-      }
-
-      return NextResponse.redirect(`${origin}${next}`);
+      // All other flows (new signup email confirm, magic link, etc.) → dashboard
+      return NextResponse.redirect(`${origin}/dashboard`);
     }
   }
 
-  // Auth failed — redirect to landing with error message
+  // Auth failed
   return NextResponse.redirect(`${origin}/?error=auth_callback_failed`);
 }
