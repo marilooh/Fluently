@@ -202,46 +202,51 @@ export default function LessonPage() {
     const accuracy = questions.length > 0 ? Math.round((score / questions.length) * 100) : 0;
     const xpEarned = Math.round(lesson.xpReward * (accuracy / 100));
     const coinsEarned = Math.round(lesson.coinReward * (accuracy / 100));
+    const congrats =
+      accuracy >= 90 ? { es: '¡Perfecto!', en: 'Flawless — you really know this material!' } :
+      accuracy >= 70 ? { es: '¡Excelente trabajo!', en: 'Excellent work! Keep building on this.' } :
+      accuracy >= 50 ? { es: '¡Buen trabajo!', en: 'Good effort — review the tricky ones and try again.' } :
+                       { es: '¡Sigue practicando!', en: "Every attempt builds your skills. Don't give up!" };
     return (
       <div className="min-h-screen bg-sky-50">
         <Navbar />
         <div className="pt-4 md:pt-24 pb-24 px-4 max-w-xl mx-auto">
           <div className="bg-white rounded-3xl shadow-sm border border-sky-100 p-8 text-center slide-up">
-            <div className="text-5xl mb-4">{accuracy >= 80 ? '🎉' : accuracy >= 50 ? '👍' : '💪'}</div>
-            <h1 className="text-2xl font-bold text-gray-900 mb-1">
-              {accuracy >= 80 ? '¡Excelente!' : accuracy >= 50 ? '¡Bien hecho!' : 'Keep Practicing!'}
-            </h1>
-            <p className="text-gray-500 text-sm mb-6">Lesson complete</p>
+            <div className="text-6xl mb-4">
+              {accuracy >= 70 ? '🎉' : accuracy >= 50 ? '👍' : '💪'}
+            </div>
+            <h1 className="text-3xl font-bold text-gray-900 mb-1">{congrats.es}</h1>
+            <p className="text-gray-500 text-sm mb-6">{congrats.en}</p>
 
             {saveError && (
               <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-4 text-sm text-amber-700">
-                ⚠️ Progress could not be saved. Check your connection — your XP and completion may not have updated.
+                ⚠️ Progress could not be saved. Check your connection.
               </div>
             )}
 
-            <div className="grid grid-cols-3 gap-3 mb-6">
-              <div className="bg-sky-50 rounded-xl p-4 text-center">
+            <div className="grid grid-cols-3 gap-3 mb-8">
+              <div className="bg-sky-50 rounded-2xl p-4 text-center">
                 <div className="text-2xl font-bold text-sky-600">+{xpEarned}</div>
-                <div className="text-xs text-gray-500">XP Earned</div>
+                <div className="text-xs text-gray-500 mt-1">XP Earned</div>
               </div>
-              <div className="bg-amber-50 rounded-xl p-4 text-center">
+              <div className="bg-amber-50 rounded-2xl p-4 text-center">
                 <div className="text-2xl font-bold text-amber-500">+{coinsEarned}</div>
-                <div className="text-xs text-gray-500">Coins</div>
+                <div className="text-xs text-gray-500 mt-1">Coins</div>
               </div>
-              <div className="bg-green-50 rounded-xl p-4 text-center">
+              <div className="bg-green-50 rounded-2xl p-4 text-center">
                 <div className="text-2xl font-bold text-green-600">{accuracy}%</div>
-                <div className="text-xs text-gray-500">Accuracy</div>
+                <div className="text-xs text-gray-500 mt-1">Accuracy</div>
               </div>
             </div>
 
-            <div className="flex gap-3">
-              <button onClick={() => { setPhase('intro'); setQIndex(0); setScore(0); setHearts(5); }}
-                className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-xl py-3 transition-colors">
-                Try Again
+            <div className="flex flex-col gap-3">
+              <button onClick={() => router.push('/dashboard')}
+                className="w-full bg-sky-500 hover:bg-sky-600 text-white font-bold rounded-2xl py-4 transition-colors text-lg">
+                Back to Dashboard
               </button>
-              <button onClick={() => router.push('/learn')}
-                className="flex-1 bg-sky-500 hover:bg-sky-600 text-white font-semibold rounded-xl py-3 transition-colors">
-                Continue →
+              <button onClick={() => { setPhase('intro'); setQIndex(0); setScore(0); setHearts(profile?.hearts ?? 5); setSaveError(false); }}
+                className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-xl py-3 transition-colors">
+                Try Again
               </button>
             </div>
           </div>

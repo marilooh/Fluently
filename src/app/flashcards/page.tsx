@@ -154,38 +154,57 @@ export default function FlashcardsPage() {
   if (sessionComplete) {
     const total = sessionStats.again + sessionStats.hard + sessionStats.good + sessionStats.easy;
     const known = sessionStats.good + sessionStats.easy;
+    const pct = total > 0 ? Math.round((known / total) * 100) : 0;
+    const congrats =
+      pct >= 80 ? { es: '¡Muy bien hecho!', en: 'Outstanding session — your memory is sharp!' } :
+      pct >= 60 ? { es: '¡Buen repaso!', en: 'Solid review — the spaced repetition is working!' } :
+                  { es: '¡Sigue así!', en: 'Keep going — every session builds stronger recall.' };
     return (
       <div className="min-h-screen bg-sky-50">
         <Navbar />
         <div className="pt-4 md:pt-24 pb-24 px-4 max-w-md mx-auto">
           <div className="bg-white rounded-3xl p-8 text-center shadow-sm border border-sky-100 slide-up">
-            <div className="text-5xl mb-4">🎓</div>
-            <h1 className="text-2xl font-bold text-gray-900 mb-1">Session Complete!</h1>
-            <p className="text-gray-500 text-sm mb-6">{total} cards reviewed · +10 XP · +5 Coins</p>
-            <div className="grid grid-cols-2 gap-3 mb-6">
+            <div className="text-6xl mb-4">🃏</div>
+            <h1 className="text-3xl font-bold text-gray-900 mb-1">{congrats.es}</h1>
+            <p className="text-gray-500 text-sm mb-6">{congrats.en}</p>
+
+            <div className="grid grid-cols-3 gap-3 mb-6">
+              <div className="bg-sky-50 rounded-2xl p-4 text-center">
+                <div className="text-2xl font-bold text-sky-600">+10</div>
+                <div className="text-xs text-gray-500 mt-1">XP Earned</div>
+              </div>
+              <div className="bg-amber-50 rounded-2xl p-4 text-center">
+                <div className="text-2xl font-bold text-amber-500">+5</div>
+                <div className="text-xs text-gray-500 mt-1">Coins</div>
+              </div>
+              <div className="bg-green-50 rounded-2xl p-4 text-center">
+                <div className="text-2xl font-bold text-green-600">{pct}%</div>
+                <div className="text-xs text-gray-500 mt-1">Recall Rate</div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 mb-8">
               {[
-                { label: '🔴 Again', value: sessionStats.again },
-                { label: '🟡 Hard', value: sessionStats.hard },
-                { label: '🔵 Good', value: sessionStats.good },
-                { label: '🟢 Easy', value: sessionStats.easy },
+                { label: 'Again', value: sessionStats.again, color: 'text-red-500' },
+                { label: 'Hard', value: sessionStats.hard, color: 'text-orange-500' },
+                { label: 'Good', value: sessionStats.good, color: 'text-sky-600' },
+                { label: 'Easy', value: sessionStats.easy, color: 'text-green-600' },
               ].map((s) => (
-                <div key={s.label} className="bg-gray-50 rounded-xl p-3 text-center">
-                  <div className="text-xl font-bold text-gray-900">{s.value}</div>
-                  <div className="text-xs text-gray-500">{s.label}</div>
+                <div key={s.label} className="bg-gray-50 rounded-xl p-3 flex items-center justify-between">
+                  <span className="text-sm text-gray-500">{s.label}</span>
+                  <span className={`font-bold text-lg ${s.color}`}>{s.value}</span>
                 </div>
               ))}
             </div>
-            <div className="bg-sky-50 rounded-xl p-3 mb-6">
-              <p className="text-sky-700 font-semibold text-sm">{total > 0 ? Math.round((known / total) * 100) : 0}% known</p>
-            </div>
-            <div className="flex gap-3">
-              <button onClick={() => startSession(selectedCategory)}
-                className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-xl py-3 transition-colors text-sm">
-                Study Again
+
+            <div className="flex flex-col gap-3">
+              <button onClick={() => router.push('/dashboard')}
+                className="w-full bg-sky-500 hover:bg-sky-600 text-white font-bold rounded-2xl py-4 transition-colors text-lg">
+                Back to Dashboard
               </button>
-              <button onClick={() => setMode('menu')}
-                className="flex-1 bg-sky-500 hover:bg-sky-600 text-white font-semibold rounded-xl py-3 transition-colors text-sm">
-                Back to Menu
+              <button onClick={() => startSession(selectedCategory)}
+                className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-xl py-3 transition-colors text-sm">
+                Study Again
               </button>
             </div>
           </div>
