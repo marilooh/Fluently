@@ -70,16 +70,22 @@ export default function Navbar() {
         </div>
       </header>
 
-      {/* Mobile bottom nav */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-sky-100 flex items-center justify-around py-2 px-2">
-        {NAV_ITEMS.map((item) => (
-          <Link key={item.href} href={item.href}
-            className={`flex flex-col items-center gap-0.5 px-2 py-1 rounded-xl transition-colors text-center
-              ${pathname === item.href ? 'text-sky-600' : 'text-gray-400'}`}>
-            <span className="text-xl">{item.icon}</span>
-            <span className="text-xs font-medium">{item.label}</span>
-          </Link>
-        ))}
+      {/* Mobile bottom nav — horizontally scrollable */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-sky-100">
+        <div className="relative">
+          <div className="flex items-center overflow-x-auto scrollbar-hide py-2 px-2 gap-1">
+            {NAV_ITEMS.map((item) => (
+              <Link key={item.href} href={item.href}
+                className={`flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl transition-colors text-center flex-shrink-0
+                  ${pathname === item.href ? 'text-sky-600' : 'text-gray-400'}`}>
+                <span className="text-xl">{item.icon}</span>
+                <span className="text-xs font-medium">{item.label}</span>
+              </Link>
+            ))}
+          </div>
+          {/* Fade hint indicating more items to the right */}
+          <div className="absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-white to-transparent pointer-events-none" />
+        </div>
       </nav>
     </>
   );
