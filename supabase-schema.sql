@@ -88,6 +88,35 @@ CREATE TRIGGER user_profiles_updated_at
 -- );
 
 
+-- ── Survey responses table ───────────────────────────────────
+-- Run this in the Supabase SQL editor to create the table that
+-- stores public survey submissions from /survey (no login needed).
+-- ─────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS public.survey_responses (
+  id                           UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  role                         TEXT,
+  spanish_interaction_frequency TEXT,
+  used_prior_tool              BOOLEAN,
+  prior_tool_issues            TEXT[]      NOT NULL DEFAULT '{}',
+  desired_features             TEXT[]      NOT NULL DEFAULT '{}',
+  teaching_feedback            TEXT,
+  why_important                TEXT,
+  commitment_scale             INTEGER     CHECK (commitment_scale BETWEEN 1 AND 5),
+  would_pay                    TEXT        CHECK (would_pay IN ('yes', 'maybe', 'no')),
+  price_range                  TEXT,
+  referral_source              TEXT,
+  created_at                   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Allow anyone (including anonymous visitors) to insert survey rows.
+-- No SELECT/UPDATE/DELETE policy is needed — responses are write-only from the public.
+ALTER TABLE public.survey_responses ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Anyone can submit a survey response"
+  ON public.survey_responses FOR INSERT
+  WITH CHECK (true);
+
+
 -- ── Auth: Email confirmation settings ────────────────────────
 -- In your Supabase dashboard → Authentication → Email Templates,
 -- set the Site URL to your Vercel deployment URL.
