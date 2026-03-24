@@ -10,7 +10,6 @@ const PROTECTED_PATHS = [
   '/leaderboard',
   '/profile',
   '/admin',
-  '/survey',
 ];
 
 export async function middleware(request: NextRequest) {

@@ -189,7 +189,7 @@ function QuestionBlock({ number, label, children }: { number: number; label: str
 
 // ── Shared thank-you screen ───────────────────────────────────────────────────
 
-function ThankYouScreen() {
+function ThankYouScreen({ isLoggedIn }: { isLoggedIn: boolean }) {
   const router = useRouter();
   return (
     <div className="min-h-screen bg-gradient-to-br from-violet-50 via-white to-orange-50">
@@ -207,14 +207,16 @@ function ThankYouScreen() {
             Your feedback is invaluable and will help us build a tool that truly serves healthcare
             professionals.
           </p>
-          <div className="mt-8 pt-6 border-t border-gray-100">
-            <button
-              onClick={() => router.push('/dashboard')}
-              className="text-violet-600 font-semibold text-sm hover:underline"
-            >
-              ← Back to Dashboard
-            </button>
-          </div>
+          {isLoggedIn && (
+            <div className="mt-8 pt-6 border-t border-gray-100">
+              <button
+                onClick={() => router.push('/dashboard')}
+                className="text-violet-600 font-semibold text-sm hover:underline"
+              >
+                ← Back to Dashboard
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -224,8 +226,7 @@ function ThankYouScreen() {
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function SurveyPage() {
-  const router = useRouter();
-  const { user, profile, loading } = useAuth();
+  const { user, loading } = useAuth();
 
   const [checkingSubmission, setCheckingSubmission] = useState(true);
   const [alreadySubmitted, setAlreadySubmitted] = useState(false);
@@ -235,14 +236,14 @@ export default function SurveyPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
-  // Redirect unauthenticated users to the login page
+  // For logged-in users, check if they already submitted
   useEffect(() => {
-    if (!loading && !user) router.push('/');
-  }, [loading, user, router]);
-
-  // Check whether this user already submitted a response
-  useEffect(() => {
-    if (!user) return;
+    if (loading) return;
+    if (!user) {
+      // Anonymous users can always fill out the form
+      setCheckingSubmission(false);
+      return;
+    }
     const supabase = createClient();
     supabase
       .from('survey_responses')
@@ -253,7 +254,7 @@ export default function SurveyPage() {
         setAlreadySubmitted(!!data);
         setCheckingSubmission(false);
       });
-  }, [user]);
+  }, [loading, user]);
 
   const set = <K extends keyof FormData>(key: K, val: FormData[K]) =>
     setForm((f) => ({ ...f, [key]: val }));
@@ -270,8 +271,8 @@ export default function SurveyPage() {
     try {
       const supabase = createClient();
       const { error: insertError } = await supabase.from('survey_responses').insert({
-        user_id: user!.id,
-        email: user!.email ?? null,
+        user_id: user?.id ?? null,
+        email: user?.email ?? null,
         role: form.role,
         spanish_interaction_frequency: form.frequency,
         used_prior_tool: form.usedPriorTool === 'Yes',
@@ -295,47 +296,11 @@ export default function SurveyPage() {
     }
   };
 
-  // ── Loading / redirect states ───────────────────────────────────────────────
-  if (loading || !user || !profile || checkingSubmission) return null;
+  // ── Loading state ───────────────────────────────────────────────────────────
+  if (loading || checkingSubmission) return null;
 
-  // ── Already submitted ───────────────────────────────────────────────────────
-  if (alreadySubmitted || submitted) return <ThankYouScreen />;
-
-  // ── Not yet qualified ────────────────────────────────────────────────────────
-  const hasQualified =
-    profile.completed_lessons.length > 0 || (profile.cards_studied ?? 0) > 0;
-
-  if (!hasQualified) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-violet-50 via-white to-orange-50">
-        <Navbar />
-        <div className="flex items-center justify-center px-4 pt-24 pb-24">
-          <div className="bg-white rounded-3xl shadow-sm border border-violet-100 p-10 max-w-md w-full text-center">
-            <div className="text-5xl mb-4">📚</div>
-            <h1 className="text-xl font-bold text-gray-900 mb-2">Try the app first!</h1>
-            <p className="text-gray-500 text-sm leading-relaxed mb-6">
-              Complete at least one lesson or one flashcard session before filling out the survey.
-              We want your feedback to be based on real experience with the app.
-            </p>
-            <div className="flex flex-col gap-3">
-              <button
-                onClick={() => router.push('/learn')}
-                className="w-full bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 text-white font-bold rounded-2xl py-3 transition-all"
-              >
-                Go to Lessons
-              </button>
-              <button
-                onClick={() => router.push('/flashcards')}
-                className="w-full bg-orange-50 hover:bg-orange-100 text-orange-700 font-semibold rounded-2xl py-3 transition-all border border-orange-200"
-              >
-                Go to Flashcards
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  // ── Already submitted (logged-in users only) ────────────────────────────────
+  if (alreadySubmitted || submitted) return <ThankYouScreen isLoggedIn={!!user} />;
 
   // ── Survey form ──────────────────────────────────────────────────────────────
   return (
@@ -487,7 +452,7 @@ export default function SurveyPage() {
           </button>
 
           <p className="text-center text-xs text-gray-400 mt-4">
-            Your response is saved under your account so you can only submit once.
+            Your responses are anonymous unless you&apos;re logged in.
           </p>
         </form>
       </div>
