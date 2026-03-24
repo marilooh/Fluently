@@ -8,8 +8,8 @@ const ROLES = [
   { value: 'student',  label: 'Medical Student' },
   { value: 'resident', label: 'Resident' },
   { value: 'doctor',   label: 'Physician' },
-  { value: 'nurse',    label: 'Nurse/NP' },
-  { value: 'pa',       label: 'Physician Assistant' },
+  { value: 'nurse',    label: 'Nurse / Nurse Practitioner' },
+  { value: 'pa',       label: 'Physician Assistant (PA)' },
   { value: 'other',    label: 'Other' },
 ];
 
