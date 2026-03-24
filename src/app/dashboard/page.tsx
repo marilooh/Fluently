@@ -25,7 +25,7 @@ export default function Dashboard() {
   const xpInCurrentLevel = (profile.xp ?? 0) - (level - 1) * 100;
   const xpProgress = Math.min((xpInCurrentLevel / xpForNextLevel) * 100, 100);
 
-  const completedCount = profile.completed_lessons.length;
+  const completedCount = profile.completed_lessons?.length ?? 0;
   const dueCardCount = getDueCards(vocabulary.map((v) => v.id)).length;
 
   return (

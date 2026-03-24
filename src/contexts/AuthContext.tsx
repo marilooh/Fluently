@@ -69,12 +69,24 @@ function readStorage(): { user: StubUser; profile: UserProfile } | null {
     const profile: UserProfile = {
       ...DEFAULT_PROGRESS,
       ...progress,
+      // Always override with identity from LEAD_KEY (source of truth)
       id: lead.id,
       email: lead.email,
-      display_name: lead.name,
+      display_name: lead.name ?? '',
       role: lead.role,
       created_at: progress.created_at ?? now,
       updated_at: now,
+      // Coerce arrays — a corrupt/old localStorage entry can store null/undefined
+      // here, and undefined.length throws a white-screen exception on the dashboard.
+      completed_lessons: Array.isArray(progress.completed_lessons)
+        ? progress.completed_lessons
+        : [],
+      avatar_items: Array.isArray(progress.avatar_items)
+        ? progress.avatar_items
+        : DEFAULT_PROGRESS.avatar_items,
+      equipped_items: Array.isArray(progress.equipped_items)
+        ? progress.equipped_items
+        : DEFAULT_PROGRESS.equipped_items,
     };
     return { user: { id: lead.id, email: lead.email }, profile };
   } catch {
