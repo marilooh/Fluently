@@ -127,24 +127,15 @@ CREATE UNIQUE INDEX IF NOT EXISTS survey_responses_user_id_key
   ON public.survey_responses(user_id)
   WHERE user_id IS NOT NULL;
 
--- Survey is public: anyone with the link can submit (user_id is optional).
--- Logged-in users can also read back their own submission to show the thank-you screen.
+-- Survey requires a logged-in account. Every response is linked to a user_id.
 ALTER TABLE public.survey_responses ENABLE ROW LEVEL SECURITY;
 
--- Drop old restrictive policy if it exists, then recreate
-DROP POLICY IF EXISTS "Authenticated users can submit their own survey response" ON public.survey_responses;
-
--- Allow anyone to insert: authenticated users link their user_id, anonymous users leave it null
-CREATE POLICY "Anyone can submit a survey response"
+-- Authenticated users can insert their own response
+CREATE POLICY "Authenticated users can submit their own survey response"
   ON public.survey_responses FOR INSERT
-  WITH CHECK (
-    -- Anonymous submission (user_id is null)
-    user_id IS NULL
-    OR
-    -- Authenticated submission (user_id must match the session)
-    auth.uid() = user_id
-  );
+  WITH CHECK (auth.uid() = user_id);
 
+-- Authenticated users can read back their own response (for duplicate-submission check)
 CREATE POLICY "Users can view their own survey response"
   ON public.survey_responses FOR SELECT
   USING (auth.uid() = user_id);
