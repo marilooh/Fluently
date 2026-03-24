@@ -11,7 +11,7 @@ type Mode = 'menu' | 'study';
 
 export default function FlashcardsPage() {
   const router = useRouter();
-  const { user: authUser, profile, updateProfile, loading } = useAuth();
+  const { profile, updateProfile, loading } = useAuth();
   const [mode, setMode] = useState<Mode>('menu');
   const [selectedCategory, setSelectedCategory] = useState<Category | 'all'>('all');
   const [deck, setDeck] = useState<VocabEntry[]>([]);
@@ -24,9 +24,9 @@ export default function FlashcardsPage() {
   const [flashNewTotalXp, setFlashNewTotalXp] = useState(0);
 
   useEffect(() => {
-    if (!loading && !authUser) router.push('/');
-    if (!loading && authUser) initForUser(authUser.id);
-  }, [authUser, loading, router]);
+    if (!loading && !profile) router.push('/');
+    if (!loading && profile) initForUser(profile.id);
+  }, [profile, loading, router]);
 
   const startSession = useCallback((category: Category | 'all') => {
     const pool = category === 'all' ? vocabulary : vocabulary.filter((v) => v.category === category);
@@ -80,7 +80,7 @@ export default function FlashcardsPage() {
     }, 300);
   };
 
-  if (loading || !authUser || !profile) return null;
+  if (loading || !profile) return null;
   const user = profile;
 
   const allIds = vocabulary.map((v) => v.id);

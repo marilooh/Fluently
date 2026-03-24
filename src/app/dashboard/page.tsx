@@ -11,14 +11,14 @@ import { getDueCards, initForUser } from '@/lib/spaceRepetition';
 
 export default function Dashboard() {
   const router = useRouter();
-  const { user: authUser, profile, loading } = useAuth();
+  const { user, profile, loading } = useAuth();
 
   useEffect(() => {
-    if (!loading && !authUser) router.push('/');
-    if (!loading && authUser) initForUser(authUser.id);
-  }, [authUser, loading, router]);
+    if (!loading && !profile) router.push('/');
+    if (!loading && user) initForUser(user.id);
+  }, [user, profile, loading, router]);
 
-  if (loading || !authUser || !profile) return null;
+  if (loading || !profile) return null;
 
   const user = profile;
   const level = user.level ?? 1;

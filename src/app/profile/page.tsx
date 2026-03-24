@@ -27,19 +27,18 @@ const BADGES = [
 
 export default function ProfilePage() {
   const router = useRouter();
-  const { user: authUser, profile, signOut, loading } = useAuth();
+  const { profile, signOut, loading } = useAuth();
 
   useEffect(() => {
-    if (!loading && !authUser) router.push('/');
-  }, [authUser, loading, router]);
+    if (!loading && !profile) router.push('/');
+  }, [profile, loading, router]);
 
   const handleLogout = async () => {
     await signOut();
     router.push('/');
-    router.refresh();
   };
 
-  if (loading || !authUser || !profile) return null;
+  if (loading || !profile) return null;
   const user = profile;
   const level = user.level ?? 1;
 

@@ -8,7 +8,7 @@ import { searchVocabulary, vocabulary, VocabEntry, CATEGORY_ICONS, CATEGORY_LABE
 
 export default function SearchPage() {
   const router = useRouter();
-  const { user: authUser, profile, loading } = useAuth();
+  const { profile, loading } = useAuth();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<VocabEntry[]>(vocabulary);
   const [activeCategory, setActiveCategory] = useState<Category | 'all'>('all');
@@ -17,10 +17,9 @@ export default function SearchPage() {
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (!loading && !authUser) { router.push('/'); return; }
-    if (!loading && authUser && !profile) { router.push('/onboarding'); return; }
+    if (!loading && !profile) { router.push('/'); return; }
     if (profile) inputRef.current?.focus();
-  }, [authUser, profile, loading, router]);
+  }, [profile, loading, router]);
 
   useEffect(() => {
     let r = searchVocabulary(query);
@@ -29,7 +28,7 @@ export default function SearchPage() {
     setResults(r);
   }, [query, activeCategory, activeDifficulty]);
 
-  if (loading || !authUser || !profile) return null;
+  if (loading || !profile) return null;
 
   return (
     <div className="min-h-screen bg-sky-50">
