@@ -119,7 +119,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const refreshProfile = useCallback(async () => {
     const stored = readStorage();
-    if (stored) setProfile(stored.profile);
+    if (stored) {
+      setUser(stored.user);
+      setProfile(stored.profile);
+    }
   }, []);
 
   const updateProfile = useCallback(

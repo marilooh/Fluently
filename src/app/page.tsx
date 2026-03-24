@@ -47,17 +47,25 @@ export default function WelcomePage() {
     };
 
     // Persist locally first — works even if Supabase insert fails
-    try { localStorage.setItem(LEAD_KEY, JSON.stringify(lead)); } catch { /* ignore */ }
+    localStorage.setItem(LEAD_KEY, JSON.stringify(lead));
 
-    // Best-effort insert into Supabase `leads` table (no auth required)
+    // Best-effort insert into Supabase `leads` table (no auth required).
+    // Send the human-readable label so the leads table stores "Nurse / Nurse Practitioner"
+    // rather than the internal key "nurse".
+    const roleLabel = ROLES.find((r) => r.value === role)?.label ?? role;
     if (isSupabaseConfigured()) {
       try {
         const supabase = createClient();
-        await supabase.from('leads').insert({ name: lead.name, role: lead.role, email: lead.email });
+        await supabase.from('leads').insert({ name: lead.name, role: roleLabel, email: lead.email });
       } catch { /* non-fatal */ }
     }
 
-    router.push('/dashboard');
+    // Use a full browser navigation instead of router.push so the AuthContext
+    // re-mounts and re-reads localStorage from scratch. router.push is a
+    // client-side transition that keeps the existing React tree — the context
+    // would still have profile=null from before the form was submitted, causing
+    // the dashboard to immediately redirect back to "/".
+    window.location.href = '/dashboard';
   };
 
   return (
