@@ -20,13 +20,12 @@ export default function Dashboard() {
 
   if (loading || !profile) return null;
 
-  const user = profile;
-  const level = user.level ?? 1;
+  const level = profile.level ?? 1;
   const xpForNextLevel = level * 100;
-  const xpInCurrentLevel = (user.xp ?? 0) - (level - 1) * 100;
+  const xpInCurrentLevel = (profile.xp ?? 0) - (level - 1) * 100;
   const xpProgress = Math.min((xpInCurrentLevel / xpForNextLevel) * 100, 100);
 
-  const completedCount = user.completed_lessons.length;
+  const completedCount = profile.completed_lessons.length;
   const dueCardCount = getDueCards(vocabulary.map((v) => v.id)).length;
 
   return (
@@ -38,24 +37,24 @@ export default function Dashboard() {
         <div className="bg-gradient-to-r from-sky-500 to-teal-500 rounded-3xl p-6 text-white mb-6 slide-up">
           <div className="flex items-center justify-between flex-wrap gap-4">
             <div>
-              <p className="text-sky-100 text-sm mb-1">¡Hola, {(user.display_name || '').split(' ')[0]}!</p>
+              <p className="text-sky-100 text-sm mb-1">¡Hola, {(profile.display_name || '').split(' ')[0]}!</p>
               <h1 className="text-2xl font-bold">Ready to learn? 💪</h1>
-              <p className="text-sky-100 text-sm mt-1">Level {level} · {user.xp ?? 0} XP total</p>
+              <p className="text-sky-100 text-sm mt-1">Level {level} · {profile.xp ?? 0} XP total</p>
             </div>
             <div className="flex gap-3">
               <div className="bg-white/20 rounded-2xl p-3 text-center min-w-[64px]">
                 <div className="text-2xl">🔥</div>
-                <div className="text-xl font-bold">{user.streak ?? 0}</div>
+                <div className="text-xl font-bold">{profile.streak ?? 0}</div>
                 <div className="text-xs text-sky-100">Streak</div>
               </div>
               <div className="bg-white/20 rounded-2xl p-3 text-center min-w-[64px]">
                 <div className="text-2xl">🪙</div>
-                <div className="text-xl font-bold">{user.coins ?? 0}</div>
+                <div className="text-xl font-bold">{profile.coins ?? 0}</div>
                 <div className="text-xs text-sky-100">Coins</div>
               </div>
               <div className="bg-white/20 rounded-2xl p-3 text-center min-w-[64px]">
                 <div className="text-2xl">❤️</div>
-                <div className="text-xl font-bold">{user.hearts ?? 5}</div>
+                <div className="text-xl font-bold">{profile.hearts ?? 5}</div>
                 <div className="text-xs text-sky-100">Hearts</div>
               </div>
             </div>
