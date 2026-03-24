@@ -60,13 +60,13 @@ function Avatar({ equippedItems, items }: { equippedItems: string[]; items: Shop
 
 export default function CharacterPage() {
   const router = useRouter();
-  const { user: authUser, profile, updateProfile, loading } = useAuth();
+  const { profile, updateProfile, loading } = useAuth();
   const [activeSlot, setActiveSlot] = useState<ItemSlot>('scrubs');
   const [message, setMessage] = useState('');
 
   useEffect(() => {
-    if (!loading && !authUser) router.push('/');
-  }, [authUser, loading, router]);
+    if (!loading && !profile) router.push('/');
+  }, [profile, loading, router]);
 
   const handlePurchase = async (item: ShopItem) => {
     if (!profile) return;
@@ -100,7 +100,7 @@ export default function CharacterPage() {
     setTimeout(() => setMessage(''), 3000);
   };
 
-  if (loading || !authUser || !profile) return null;
+  if (loading || !profile) return null;
   const user = profile;
 
   const slotItems = getItemsBySlot(activeSlot);

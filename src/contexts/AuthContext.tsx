@@ -1,22 +1,17 @@
 'use client';
 
 import { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import type { User } from '@supabase/supabase-js';
-import { createClient } from '@/lib/supabase';
 
 export interface UserProfile {
-  // Columns that exist in the Supabase table
   id: string;
   email?: string;
-  display_name: string;           // NOTE: Supabase column is display_name (not name)
+  display_name: string;
   xp: number;
   coins: number;
   completed_lessons: string[];
   created_at: string;
   updated_at: string;
-
-  // Columns that must be added via ALTER TABLE (see supabase-schema.sql)
-  role?: 'student' | 'nurse' | 'emt' | 'doctor' | 'premed' | 'other';
+  role?: string;
   institution?: string;
   level?: number;
   streak?: number;
@@ -30,13 +25,61 @@ export interface UserProfile {
   cards_mastered?: number;
 }
 
+// Minimal stub so pages that destructure user.id / user.email still compile.
+interface StubUser {
+  id: string;
+  email?: string;
+}
+
 interface AuthContextType {
-  user: User | null;
+  user: StubUser | null;
   profile: UserProfile | null;
   loading: boolean;
   refreshProfile: () => Promise<void>;
   updateProfile: (updates: Partial<UserProfile>) => Promise<UserProfile | null>;
   signOut: () => Promise<void>;
+}
+
+const LEAD_KEY = 'sana_lead';
+const PROGRESS_KEY = 'sana_profile';
+
+const DEFAULT_PROGRESS = {
+  xp: 0,
+  coins: 100,
+  completed_lessons: [] as string[],
+  level: 1,
+  streak: 0,
+  hearts: 5,
+  avatar_items: ['scrubs_white', 'badge_basic'],
+  equipped_items: ['scrubs_white', 'badge_basic'],
+  placement_level: null as null,
+  onboarding_completed: true,
+  cards_studied: 0,
+  cards_mastered: 0,
+};
+
+function readStorage(): { user: StubUser; profile: UserProfile } | null {
+  try {
+    const raw = localStorage.getItem(LEAD_KEY);
+    if (!raw) return null;
+    const lead = JSON.parse(raw) as { id: string; name: string; role: string; email: string };
+    const saved = localStorage.getItem(PROGRESS_KEY);
+    const progress = saved ? JSON.parse(saved) : {};
+    const now = new Date().toISOString();
+    const profile: UserProfile = {
+      ...DEFAULT_PROGRESS,
+      ...progress,
+      id: lead.id,
+      email: lead.email,
+      display_name: lead.name,
+      role: lead.role,
+      created_at: progress.created_at ?? now,
+      updated_at: now,
+    };
+    return { user: { id: lead.id, email: lead.email }, profile };
+  } catch {
+    return null;
+  }
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -49,127 +92,44 @@ const AuthContext = createContext<AuthContextType>({
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<StubUser | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const supabase = createClient();
-
-  /**
-   * Fetch the user_profiles row for `userId`.
-   *
-   * If it doesn't exist yet — which happens when email confirmation is
-   * enabled: the signup upsert in page.tsx runs without a session, so
-   * RLS blocks it — we auto-create the row here using the auth
-   * user_metadata stored at sign-up time.  We always have a valid session
-   * at this point (onAuthStateChange fires after the token exchange), so
-   * the INSERT will pass the `auth.uid() = id` RLS policy.
-   */
-  const fetchProfile = useCallback(
-    async (userId: string, userMeta?: Record<string, unknown>) => {
-      const { data } = await supabase
-        .from('user_profiles')
-        .select('*')
-        .eq('id', userId)
-        .single();
-
-      if (data) {
-        setProfile(data as UserProfile);
-        return;
-      }
-
-      // Row missing — create it now from auth metadata
-      const meta = userMeta ?? {};
-      const today = new Date().toISOString().split('T')[0];
-      const { data: created, error } = await supabase
-        .from('user_profiles')
-        .upsert({
-          id: userId,
-          email: (meta.email as string) || null,
-          display_name: (meta.name as string) || 'User',
-          xp: 0,
-          coins: 100,
-          completed_lessons: [],
-          // Extra columns — only saved if they've been added via ALTER TABLE
-          role: (meta.role as string) || 'student',
-          institution: (meta.institution as string) || null,
-          level: 1,
-          streak: 0,
-          last_active_date: today,
-          hearts: 5,
-          avatar_items: ['scrubs_white', 'badge_basic'],
-          equipped_items: ['scrubs_white', 'badge_basic'],
-          placement_level: null,
-          onboarding_completed: true,
-        })
-        .select()
-        .single();
-
-      if (created && !error) {
-        setProfile(created as UserProfile);
-      }
-    },
-    [supabase]
-  );
+  useEffect(() => {
+    const stored = readStorage();
+    if (stored) {
+      setUser(stored.user);
+      setProfile(stored.profile);
+    }
+    setLoading(false);
+  }, []);
 
   const refreshProfile = useCallback(async () => {
-    if (user) await fetchProfile(user.id);
-  }, [user, fetchProfile]);
+    const stored = readStorage();
+    if (stored) setProfile(stored.profile);
+  }, []);
 
   const updateProfile = useCallback(
     async (updates: Partial<UserProfile>): Promise<UserProfile | null> => {
-      if (!user || !profile) return null;
-
-      // Filter to only columns that actually exist in the Supabase table.
-      // The profile object is built from select('*'), so only real DB columns
-      // are own properties at runtime. Passing unknown column names causes
-      // Postgres to reject the entire UPDATE — losing writes we DO want.
-      const safeUpdates = Object.fromEntries(
-        Object.entries(updates).filter(([key]) =>
-          Object.prototype.hasOwnProperty.call(profile, key)
-        )
-      ) as Partial<UserProfile>;
-
-      const { data, error } = await supabase
-        .from('user_profiles')
-        .update({ ...safeUpdates, updated_at: new Date().toISOString() })
-        .eq('id', user.id)
-        .select()
-        .single();
-      if (data && !error) {
-        setProfile(data as UserProfile);
-        return data as UserProfile;
-      }
-      return null;
+      if (!profile) return null;
+      const updated: UserProfile = { ...profile, ...updates, updated_at: new Date().toISOString() };
+      setProfile(updated);
+      // Persist only progress fields — lead identity lives in LEAD_KEY
+      const { id: _id, email: _email, display_name: _dn, role: _role, created_at: _ca, ...progress } = updated;
+      void _id; void _email; void _dn; void _role; void _ca;
+      localStorage.setItem(PROGRESS_KEY, JSON.stringify(progress));
+      return updated;
     },
-    [user, profile, supabase]
+    [profile]
   );
 
   const signOut = useCallback(async () => {
-    await supabase.auth.signOut();
+    localStorage.removeItem(LEAD_KEY);
+    localStorage.removeItem(PROGRESS_KEY);
     setUser(null);
     setProfile(null);
-  }, [supabase]);
-
-  useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        setUser(session?.user ?? null);
-        if (session?.user) {
-          // Merge email into metadata so fetchProfile can include it when auto-creating the row
-          await fetchProfile(session.user.id, {
-            ...(session.user.user_metadata as Record<string, unknown>),
-            email: session.user.email,
-          });
-        } else {
-          setProfile(null);
-        }
-        setLoading(false);
-      }
-    );
-
-    return () => subscription.unsubscribe();
-  }, [supabase, fetchProfile]);
+  }, []);
 
   return (
     <AuthContext.Provider value={{ user, profile, loading, refreshProfile, updateProfile, signOut }}>
