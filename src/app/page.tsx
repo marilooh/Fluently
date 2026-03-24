@@ -6,12 +6,11 @@ import { createClient, isSupabaseConfigured } from '@/lib/supabase';
 
 const ROLES = [
   { value: 'student',  label: 'Medical Student' },
-  { value: 'premed',   label: 'Pre-med Student' },
-  { value: 'resident', label: 'Resident / Fellow' },
+  { value: 'resident', label: 'Resident' },
   { value: 'doctor',   label: 'Physician' },
-  { value: 'nurse',    label: 'Nurse / NP / PA' },
-  { value: 'emt',      label: 'EMT / Paramedic' },
-  { value: 'other',    label: 'Other Healthcare' },
+  { value: 'nurse',    label: 'Nurse/NP' },
+  { value: 'pa',       label: 'Physician Assistant' },
+  { value: 'other',    label: 'Other' },
 ];
 
 const LEAD_KEY = 'sana_lead';
