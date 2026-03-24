@@ -10,6 +10,7 @@ const PROTECTED_PATHS = [
   '/leaderboard',
   '/profile',
   '/admin',
+  '/survey',
 ];
 
 export async function middleware(request: NextRequest) {
@@ -26,32 +27,32 @@ export async function middleware(request: NextRequest) {
 
   let supabaseResponse = NextResponse.next({ request });
 
-  const supabase = createServerClient(
-    supabaseUrl,
-    supabaseKey,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll();
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) =>
-            request.cookies.set(name, value)
-          );
-          supabaseResponse = NextResponse.next({ request });
-          cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
-          );
-        },
+  const supabase = createServerClient(supabaseUrl, supabaseKey, {
+    cookies: {
+      getAll() {
+        return request.cookies.getAll();
       },
-    }
-  );
+      setAll(cookiesToSet) {
+        cookiesToSet.forEach(({ name, value }) =>
+          request.cookies.set(name, value)
+        );
+        supabaseResponse = NextResponse.next({ request });
+        cookiesToSet.forEach(({ name, value, options }) =>
+          supabaseResponse.cookies.set(name, value, options)
+        );
+      },
+    },
+  });
 
-  // Refresh the session — important for keeping auth tokens alive
+  // Use getSession() instead of getUser() to avoid a network round-trip on every request.
+  // getUser() makes an HTTP call to Supabase auth servers and can exceed Vercel's middleware
+  // timeout (~1.5s), causing 504 MIDDLEWARE_INVOCATION_TIMEOUT errors.
+  // getSession() reads directly from the cookie — no external call, no timeout risk.
   const {
-    data: { user },
-  } = await supabase.auth.getUser();
+    data: { session },
+  } = await supabase.auth.getSession();
 
+  const user = session?.user ?? null;
   const pathname = request.nextUrl.pathname;
   const isProtected = PROTECTED_PATHS.some((p) => pathname.startsWith(p));
 
@@ -74,6 +75,7 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon\\.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    // Skip: Next.js internals, static assets, API routes, and all file extensions
+    '/((?!_next/static|_next/image|favicon\\.ico|api/|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff|woff2|ttf|otf)$).*)',
   ],
 };
